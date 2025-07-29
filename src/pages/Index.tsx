@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { Navigation } from "@/components/Navigation";
 import { HeroSection } from "@/components/HeroSection";
 import { SearchSection } from "@/components/SearchSection";
@@ -6,12 +7,23 @@ import { DiscoverSection } from "@/components/DiscoverSection";
 import { TrendingSection } from "@/components/TrendingSection";
 import { ActivitySection } from "@/components/ActivitySection";
 import { LoginPopup } from "@/components/LoginPopup";
+import { useAuth } from "@/hooks/useAuth";
 
-const Index = () => {
+export default function Index() {
+  const navigate = useNavigate();
+  const { user, loading } = useAuth();
   const [searchValue, setSearchValue] = useState("");
   const [showSearchInNav, setShowSearchInNav] = useState(false);
   const [isScrolled, setIsScrolled] = useState(false);
-  const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [isLoginOpen, setIsLoginOpen] = useState(false);
+
+  // Redirect to onboarding if user just signed in
+  useEffect(() => {
+    if (user && !loading) {
+      // Check if this is a new user (you might want to add this logic later)
+      navigate('/onboarding');
+    }
+  }, [user, loading, navigate]);
 
   useEffect(() => {
     const handleScroll = () => {
@@ -27,28 +39,35 @@ const Index = () => {
   }, []);
 
   const handleSearch = (query: string) => {
-    console.log("Searching for:", query);
-    // TODO: Implement search functionality
+    if (query.trim()) {
+      navigate(`/search?q=${encodeURIComponent(query.trim())}`);
+    }
   };
 
   const handleSearchValueChange = (value: string) => {
     setSearchValue(value);
   };
 
+  const handleStartBuilding = () => {
+    if (user) {
+      navigate('/create');
+    } else {
+      setIsLoginOpen(true);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-background">
-      {/* Navigation */}
-      <Navigation
+      <Navigation 
         searchValue={searchValue}
-        onSearchChange={handleSearchValueChange}
+        onSearchChange={setSearchValue}
         showSearchInNav={showSearchInNav}
         isScrolled={isScrolled}
+        onLoginClick={() => setIsLoginOpen(true)}
       />
+      
+      <HeroSection onStartBuilding={handleStartBuilding} />
 
-      {/* Hero Section */}
-      <HeroSection />
-
-      {/* Search Section */}
       <SearchSection
         searchValue={searchValue}
         onSearchValueChange={handleSearchValueChange}
@@ -56,13 +75,10 @@ const Index = () => {
         isVisible={!showSearchInNav}
       />
 
-      {/* Discover Business Playbooks */}
       <DiscoverSection />
 
-      {/* Trending This Week */}
       <TrendingSection />
 
-      {/* Recent Activity & Top Contributors */}
       <ActivitySection />
 
       {/* Footer */}
@@ -119,11 +135,9 @@ const Index = () => {
 
       {/* Login Popup */}
       <LoginPopup
-        isOpen={showLoginPopup}
-        onClose={() => setShowLoginPopup(false)}
+        isOpen={isLoginOpen}
+        onClose={() => setIsLoginOpen(false)}
       />
     </div>
   );
-};
-
-export default Index;
+}

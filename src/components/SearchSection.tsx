@@ -35,6 +35,9 @@ export function SearchSection({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
+    if (localSearchValue.trim()) {
+      window.location.href = `/search?q=${encodeURIComponent(localSearchValue.trim())}`;
+    }
     onSearch?.(localSearchValue);
   };
 
@@ -45,9 +48,7 @@ export function SearchSection({
   };
 
   const handleQuickAccess = (label: string) => {
-    const newValue = localSearchValue ? `${localSearchValue} ${label}` : label;
-    setLocalSearchValue(newValue);
-    onSearchValueChange?.(newValue);
+    window.location.href = `/search?tag=${encodeURIComponent(label)}`;
   };
 
   if (!isVisible) return null;

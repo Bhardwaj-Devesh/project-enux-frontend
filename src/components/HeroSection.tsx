@@ -1,7 +1,11 @@
 import { Button } from "@/components/ui/button";
 import { ArrowRight, GitFork, Users, BookOpen } from "lucide-react";
 
-export function HeroSection() {
+interface HeroSectionProps {
+  onStartBuilding?: () => void;
+}
+
+export function HeroSection({ onStartBuilding }: HeroSectionProps) {
   return (
     <section className="relative py-20 lg:py-32 overflow-hidden">
       {/* Background gradient */}
@@ -51,7 +55,12 @@ export function HeroSection() {
 
           {/* CTA Button */}
           <div className="animate-scale-in">
-            <Button variant="hero" size="xl" className="group">
+            <Button 
+              variant="hero" 
+              size="xl" 
+              className="group"
+              onClick={onStartBuilding}
+            >
               Start Building
               <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
             </Button>

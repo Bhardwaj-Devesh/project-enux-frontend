@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { Search, Plus, Bell, User, GitFork, Star, BookOpen } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
@@ -14,18 +15,27 @@ interface NavigationProps {
   onSearchChange?: (value: string) => void;
   showSearchInNav?: boolean;
   isScrolled?: boolean;
+  onLoginClick?: () => void;
 }
 
 export function Navigation({ 
   searchValue = "", 
   onSearchChange, 
   showSearchInNav = false,
-  isScrolled = false 
+  isScrolled = false,
+  onLoginClick
 }: NavigationProps) {
-  const [isLoggedIn, setIsLoggedIn] = useState(false);
+  const { user, signOut } = useAuth();
   
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchChange?.(e.target.value);
+  };
+
+  const handleSearchSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (searchValue.trim()) {
+      window.location.href = `/search?q=${encodeURIComponent(searchValue.trim())}`;
+    }
   };
 
   return (
@@ -47,7 +57,7 @@ export function Navigation({
 
           {/* Search Bar - Only visible when showSearchInNav is true */}
           {showSearchInNav && (
-            <div className="flex-1 max-w-md mx-8">
+            <form onSubmit={handleSearchSubmit} className="flex-1 max-w-md mx-8">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-muted-foreground" />
                 <Input
@@ -58,7 +68,7 @@ export function Navigation({
                   onChange={handleSearch}
                 />
               </div>
-            </div>
+            </form>
           )}
 
           {/* Right side actions */}
@@ -71,17 +81,26 @@ export function Navigation({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-48" align="end">
-                <div className="space-y-2">
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
-                    Create Playbook
-                  </button>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
-                    Import Playbook
-                  </button>
-                  <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
-                    Upload Files
-                  </button>
-                </div>
+                {user ? (
+                  <div className="space-y-2">
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
+                      Create Playbook
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
+                      Import Playbook
+                    </button>
+                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
+                      Upload Files
+                    </button>
+                  </div>
+                ) : (
+                  <div className="text-center py-4">
+                    <p className="text-sm text-muted-foreground mb-3">
+                      Sign in to create content
+                    </p>
+                    <Button size="sm" onClick={onLoginClick}>Sign In</Button>
+                  </div>
+                )}
               </PopoverContent>
             </Popover>
 
@@ -93,7 +112,7 @@ export function Navigation({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-80" align="end">
-                {isLoggedIn ? (
+                {user ? (
                   <div className="space-y-4">
                     <h4 className="font-medium">Notifications</h4>
                     <div className="space-y-2">
@@ -107,7 +126,7 @@ export function Navigation({
                     <p className="text-sm text-muted-foreground mb-3">
                       Sign in to see your notifications
                     </p>
-                    <Button size="sm">Sign In</Button>
+                    <Button size="sm" onClick={onLoginClick}>Sign In</Button>
                   </div>
                 )}
               </PopoverContent>
@@ -121,7 +140,7 @@ export function Navigation({
                 </Button>
               </PopoverTrigger>
               <PopoverContent className="w-48" align="end">
-                {isLoggedIn ? (
+                {user ? (
                   <div className="space-y-2">
                     <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
                       My Playbooks
@@ -129,13 +148,21 @@ export function Navigation({
                     <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
                       Settings
                     </button>
+                    <div className="border-t pt-2">
+                      <button 
+                        onClick={signOut}
+                        className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md text-red-600"
+                      >
+                        Sign Out
+                      </button>
+                    </div>
                   </div>
                 ) : (
                   <div className="text-center py-4">
                     <p className="text-sm text-muted-foreground mb-3">
                       Join the community
                     </p>
-                    <Button size="sm" className="w-full">Sign In</Button>
+                    <Button size="sm" className="w-full" onClick={onLoginClick}>Sign In</Button>
                   </div>
                 )}
               </PopoverContent>

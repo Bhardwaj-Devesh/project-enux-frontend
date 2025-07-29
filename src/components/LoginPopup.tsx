@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { X, Mail, Github, Chrome, BookOpen } from "lucide-react";
+import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -21,15 +22,35 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const { signUp, signIn, signInWithProvider } = useAuth();
+
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    // TODO: Implement authentication when Supabase is connected
-    console.log("Auth form submitted:", { email, password, isSignUp });
+    if (!email || !password) return;
+    
+    if (isSignUp) {
+      const { error } = await signUp(email, password);
+      if (!error) {
+        onClose();
+      }
+    } else {
+      const { error } = await signIn(email, password);
+      if (!error) {
+        onClose();
+      }
+    }
   };
 
-  const handleSocialLogin = (provider: string) => {
-    // TODO: Implement social authentication when Supabase is connected
-    console.log("Social login with:", provider);
+  const handleSocialLogin = async (provider: 'google' | 'github' | 'email') => {
+    if (provider === 'email') {
+      setIsSignUp(false);
+      return;
+    }
+    
+    const { error } = await signInWithProvider(provider);
+    if (!error) {
+      onClose();
+    }
   };
 
   return (
@@ -112,7 +133,7 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
               <Input
                 id="password"
                 type="password"
-                placeholder="Create a password"
+                placeholder={isSignUp ? "Create a password" : "Enter your password"}
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 required
@@ -120,8 +141,32 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
             </div>
 
             <Button type="submit" size="lg" className="w-full">
-              Create Account
+              {isSignUp ? "Create Account" : "Sign In"}
             </Button>
+            
+            {!isSignUp && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(true)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Don't have an account? Sign up
+                </button>
+              </div>
+            )}
+            
+            {isSignUp && (
+              <div className="text-center">
+                <button
+                  type="button"
+                  onClick={() => setIsSignUp(false)}
+                  className="text-sm text-primary hover:underline"
+                >
+                  Already have an account? Sign in
+                </button>
+              </div>
+            )}
           </form>
 
           {/* Terms and Privacy */}
