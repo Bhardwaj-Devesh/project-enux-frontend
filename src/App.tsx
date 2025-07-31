@@ -7,6 +7,7 @@ import { AuthProvider } from "@/hooks/useAuth";
 import Index from "./pages/Index";
 import SearchResults from "./pages/SearchResults";
 import Onboarding from "./pages/Onboarding";
+import PlaybookDetail from "./pages/PlaybookDetail";
 import NotFound from "./pages/NotFound";
 
 const queryClient = new QueryClient();
@@ -22,6 +23,7 @@ const App = () => (
             <Route path="/" element={<Index />} />
             <Route path="/search" element={<SearchResults />} />
             <Route path="/onboarding" element={<Onboarding />} />
+            <Route path="/playbook/:id" element={<PlaybookDetail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

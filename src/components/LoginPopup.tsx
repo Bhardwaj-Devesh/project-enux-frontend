@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { X, Mail, Github, Chrome, BookOpen } from "lucide-react";
+import { X, Mail, Github, Chrome, BookOpen, User } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -22,7 +22,7 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
   const [password, setPassword] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
-  const { signUp, signIn, signInWithProvider } = useAuth();
+  const { signUp, signIn, signInWithProvider, signInAsGuest } = useAuth();
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -99,6 +99,19 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
             >
               <Mail className="h-5 w-5 mr-2" />
               Continue with Email
+            </Button>
+            
+            <Button
+              variant="outline"
+              size="lg"
+              className="w-full"
+              onClick={() => {
+                signInAsGuest();
+                onClose();
+              }}
+            >
+              <User className="h-5 w-5 mr-2" />
+              Continue as Guest
             </Button>
           </div>
 

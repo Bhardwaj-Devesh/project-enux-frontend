@@ -56,6 +56,57 @@ export type Database = {
           },
         ]
       }
+      commits: {
+        Row: {
+          author_id: string | null
+          commit_type: string | null
+          created_at: string
+          diff_summary: string | null
+          file_id: string | null
+          id: string
+          repo_id: string | null
+          version_from: string | null
+          version_to: string | null
+        }
+        Insert: {
+          author_id?: string | null
+          commit_type?: string | null
+          created_at?: string
+          diff_summary?: string | null
+          file_id?: string | null
+          id?: string
+          repo_id?: string | null
+          version_from?: string | null
+          version_to?: string | null
+        }
+        Update: {
+          author_id?: string | null
+          commit_type?: string | null
+          created_at?: string
+          diff_summary?: string | null
+          file_id?: string | null
+          id?: string
+          repo_id?: string | null
+          version_from?: string | null
+          version_to?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commits_author_id_fkey"
+            columns: ["author_id"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commits_repo_id_fkey"
+            columns: ["repo_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       content_reports: {
         Row: {
           created_at: string | null
@@ -114,11 +165,57 @@ export type Database = {
           },
         ]
       }
+      file_versions: {
+        Row: {
+          committed_by: string | null
+          created_at: string
+          diff_summary: string | null
+          file_id: string | null
+          id: string
+          storage_path: string | null
+          version_id: string
+        }
+        Insert: {
+          committed_by?: string | null
+          created_at?: string
+          diff_summary?: string | null
+          file_id?: string | null
+          id?: string
+          storage_path?: string | null
+          version_id: string
+        }
+        Update: {
+          committed_by?: string | null
+          created_at?: string
+          diff_summary?: string | null
+          file_id?: string | null
+          id?: string
+          storage_path?: string | null
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "file_versions_committed_by_fkey"
+            columns: ["committed_by"]
+            isOneToOne: false
+            referencedRelation: "profiles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "file_versions_file_id_fkey"
+            columns: ["file_id"]
+            isOneToOne: false
+            referencedRelation: "playbook_assets"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       playbook_assets: {
         Row: {
           asset_type: Database["public"]["Enums"]["asset_type"]
           content: string | null
           created_at: string | null
+          current_version: string | null
           file_name: string
           file_path: string
           id: string
@@ -126,11 +223,13 @@ export type Database = {
           size_bytes: number | null
           storage_path: string | null
           updated_at: string | null
+          versions: string[] | null
         }
         Insert: {
           asset_type: Database["public"]["Enums"]["asset_type"]
           content?: string | null
           created_at?: string | null
+          current_version?: string | null
           file_name: string
           file_path: string
           id?: string
@@ -138,11 +237,13 @@ export type Database = {
           size_bytes?: number | null
           storage_path?: string | null
           updated_at?: string | null
+          versions?: string[] | null
         }
         Update: {
           asset_type?: Database["public"]["Enums"]["asset_type"]
           content?: string | null
           created_at?: string | null
+          current_version?: string | null
           file_name?: string
           file_path?: string
           id?: string
@@ -150,6 +251,7 @@ export type Database = {
           size_bytes?: number | null
           storage_path?: string | null
           updated_at?: string | null
+          versions?: string[] | null
         }
         Relationships: [
           {
@@ -242,6 +344,39 @@ export type Database = {
           },
         ]
       }
+      playbook_tags: {
+        Row: {
+          id: string
+          playbook_id: string | null
+          tag_id: string | null
+        }
+        Insert: {
+          id?: string
+          playbook_id?: string | null
+          tag_id?: string | null
+        }
+        Update: {
+          id?: string
+          playbook_id?: string | null
+          tag_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "playbook_tags_playbook_id_fkey"
+            columns: ["playbook_id"]
+            isOneToOne: false
+            referencedRelation: "playbooks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "playbook_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       playbook_versions: {
         Row: {
           author_id: string | null
@@ -306,7 +441,9 @@ export type Database = {
           language: string | null
           license: string | null
           size_bytes: number | null
+          stage: string | null
           stars_count: number | null
+          structure: Json | null
           title: string
           updated_at: string | null
           visibility: Database["public"]["Enums"]["playbook_visibility"] | null
@@ -322,7 +459,9 @@ export type Database = {
           language?: string | null
           license?: string | null
           size_bytes?: number | null
+          stage?: string | null
           stars_count?: number | null
+          structure?: Json | null
           title: string
           updated_at?: string | null
           visibility?: Database["public"]["Enums"]["playbook_visibility"] | null
@@ -338,7 +477,9 @@ export type Database = {
           language?: string | null
           license?: string | null
           size_bytes?: number | null
+          stage?: string | null
           stars_count?: number | null
+          structure?: Json | null
           title?: string
           updated_at?: string | null
           visibility?: Database["public"]["Enums"]["playbook_visibility"] | null
@@ -368,7 +509,11 @@ export type Database = {
           created_at: string | null
           full_name: string | null
           id: string
+          interests: string[] | null
+          last_login: string | null
           location: string | null
+          recommender_suggestions: Json | null
+          stage: string | null
           updated_at: string | null
           username: string
           website: string | null
@@ -380,7 +525,11 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id: string
+          interests?: string[] | null
+          last_login?: string | null
           location?: string | null
+          recommender_suggestions?: Json | null
+          stage?: string | null
           updated_at?: string | null
           username: string
           website?: string | null
@@ -392,7 +541,11 @@ export type Database = {
           created_at?: string | null
           full_name?: string | null
           id?: string
+          interests?: string[] | null
+          last_login?: string | null
           location?: string | null
+          recommender_suggestions?: Json | null
+          stage?: string | null
           updated_at?: string | null
           username?: string
           website?: string | null
@@ -525,6 +678,24 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      tags: {
+        Row: {
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
       }
       user_roles: {
         Row: {

@@ -6,10 +6,12 @@ import { useToast } from '@/hooks/use-toast';
 interface AuthContextType {
   user: User | null;
   session: Session | null;
+  isGuest: boolean;
   signUp: (email: string, password: string) => Promise<{ error: any }>;
   signIn: (email: string, password: string) => Promise<{ error: any }>;
   signOut: () => Promise<void>;
   signInWithProvider: (provider: 'google' | 'github') => Promise<{ error: any }>;
+  signInAsGuest: () => void;
   loading: boolean;
 }
 
@@ -18,6 +20,7 @@ const AuthContext = createContext<AuthContextType | undefined>(undefined);
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
+  const [isGuest, setIsGuest] = useState(false);
   const [loading, setLoading] = useState(true);
   const { toast } = useToast();
 
@@ -111,8 +114,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return { error };
   };
 
+  const signInAsGuest = () => {
+    setIsGuest(true);
+    setLoading(false);
+    toast({
+      title: "Browsing as Guest",
+      description: "You can view all content but can't create or fork playbooks.",
+    });
+  };
+
   const signOut = async () => {
     await supabase.auth.signOut();
+    setIsGuest(false);
     toast({
       title: "Signed out",
       description: "You've been successfully signed out.",
@@ -123,10 +136,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     <AuthContext.Provider value={{
       user,
       session,
+      isGuest,
       signUp,
       signIn,
       signOut,
       signInWithProvider,
+      signInAsGuest,
       loading
     }}>
       {children}
