@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { Link } from "react-router-dom";
 import { Search, Plus, Bell, User, GitFork, Star, BookOpen } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
@@ -83,9 +84,9 @@ export function Navigation({
               <PopoverContent className="w-48" align="end">
                 {user ? (
                   <div className="space-y-2">
-                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
+                    <Link to="/create" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
                       Create Playbook
-                    </button>
+                    </Link>
                     <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
                       Import Playbook
                     </button>
@@ -142,9 +143,9 @@ export function Navigation({
               <PopoverContent className="w-48" align="end">
                 {user ? (
                   <div className="space-y-2">
-                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
+                    <Link to="/my-playbooks" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
                       My Playbooks
-                    </button>
+                    </Link>
                     <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
                       Settings
                     </button>

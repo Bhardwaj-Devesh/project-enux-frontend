@@ -1,8 +1,12 @@
-# Welcome to your Lovable project
+# Founders Playbook Hub
 
 ## Project info
 
 **URL**: https://lovable.dev/projects/a0cbfee0-b7b3-4315-887a-473555aee4c0
+
+## Supabase Storage Setup
+
+This project requires specific Supabase storage buckets to function properly. Please refer to the [Storage Setup Guide](./STORAGE_SETUP.md) for detailed instructions on how to set up the required storage buckets and permissions.
 
 ## How can I edit this code?
 

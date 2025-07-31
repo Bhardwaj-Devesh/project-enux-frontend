@@ -5,82 +5,60 @@ import { PlaybookCard } from "@/components/PlaybookCard";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Search } from "lucide-react";
-
-const mockPlaybooks = [
-  {
-    id: "1",
-    title: "Content Marketing Guide for MVP Launch",
-    description: "A comprehensive guide to building a content marketing strategy for your minimum viable product launch.",
-    author: "Sarah Chen",
-    forks: 24,
-    stars: 156,
-    tag: "Marketing",
-    difficulty: "Beginner"
-  },
-  {
-    id: "2", 
-    title: "Fundraising Deck Template",
-    description: "Battle-tested investor pitch deck template that helped raise $2M in seed funding.",
-    author: "Mike Rodriguez",
-    forks: 89,
-    stars: 342,
-    tag: "Fundraising",
-    difficulty: "Intermediate"
-  },
-  {
-    id: "3",
-    title: "Product Launch Checklist",
-    description: "Step-by-step checklist covering pre-launch, launch day, and post-launch activities.",
-    author: "Jessica Park",
-    forks: 45,
-    stars: 201,
-    tag: "Product Launch",
-    difficulty: "Beginner"
-  },
-  {
-    id: "4",
-    title: "Sales Playbook for SaaS Startups",
-    description: "Proven sales strategies and scripts that converted 25% of leads to paying customers.",
-    author: "David Kim",
-    forks: 67,
-    stars: 289,
-    tag: "Sales",
-    difficulty: "Advanced"
-  }
-];
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
 const quickFilters = [
   "All", "Marketing", "Fundraising", "Product Launch", "Business Strategy", "Sales"
 ];
+
+function usePlaybooks() {
+  return useQuery<Database['public']['Tables']['playbooks']['Row'][]>({
+    queryKey: ['playbooks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('playbooks')
+        .select('*');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
+function getTag(structure: unknown): string {
+  if (
+    structure &&
+    typeof structure === 'object' &&
+    'tags' in structure &&
+    Array.isArray((structure as any).tags)
+  ) {
+    return (structure as any).tags[0] || 'General';
+  }
+  return 'General';
+}
 
 export default function SearchResults() {
   const [searchParams] = useSearchParams();
   const query = searchParams.get('q') || '';
   const tag = searchParams.get('tag') || '';
   const [activeFilter, setActiveFilter] = useState(tag || "All");
-  const [filteredPlaybooks, setFilteredPlaybooks] = useState(mockPlaybooks);
+  const { data: playbooks = [], isLoading, isError } = usePlaybooks();
 
-  useEffect(() => {
-    let filtered = mockPlaybooks;
-    
-    // Filter by search query
-    if (query) {
-      filtered = filtered.filter(playbook => 
-        playbook.title.toLowerCase().includes(query.toLowerCase()) ||
-        playbook.description.toLowerCase().includes(query.toLowerCase()) ||
-        playbook.tag.toLowerCase().includes(query.toLowerCase())
-      );
-    }
-    
-    // Filter by tag
-    if (activeFilter !== "All") {
-      filtered = filtered.filter(playbook => 
-        playbook.tag === activeFilter
-      );
-    }
-    
-    setFilteredPlaybooks(filtered);
-  }, [query, activeFilter]);
+  const filteredPlaybooks = playbooks.filter(playbook => {
+    const tag = getTag(playbook.structure);
+    const matchesQuery =
+      !query ||
+      playbook.title?.toLowerCase().includes(query.toLowerCase()) ||
+      playbook.description?.toLowerCase().includes(query.toLowerCase()) ||
+      tag.toLowerCase().includes(query.toLowerCase());
+    const matchesTag =
+      activeFilter === "All" || tag === activeFilter;
+    return matchesQuery && matchesTag;
+  });
+
+  if (isLoading) return <div className="p-8 text-center">Loading playbooks...</div>;
+  if (isError) return <div className="p-8 text-center text-red-500">Failed to load playbooks.</div>;
 
   return (
     <div className="min-h-screen bg-background">
@@ -118,15 +96,25 @@ export default function SearchResults() {
         {/* Results Grid */}
         {filteredPlaybooks.length > 0 ? (
           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {filteredPlaybooks.map((playbook) => (
-              <Link 
-                key={playbook.id} 
-                to={`/playbook/${playbook.id}`}
-                className="block transition-transform hover:scale-105"
-              >
-                <PlaybookCard {...playbook} />
-              </Link>
-            ))}
+            {filteredPlaybooks.map((playbook) => {
+              const tag = getTag(playbook.structure);
+              return (
+                <Link 
+                  key={playbook.id} 
+                  to={`/playbook/${playbook.id}`}
+                  className="block transition-transform hover:scale-105"
+                >
+                  <PlaybookCard
+                    title={playbook.title}
+                    description={playbook.description}
+                    author={playbook.author_id || 'Unknown'}
+                    forks={playbook.forks_count ?? 0}
+                    stars={playbook.stars_count ?? 0}
+                    tag={tag}
+                  />
+                </Link>
+              );
+            })}
           </div>
         ) : (
           <div className="text-center py-16">

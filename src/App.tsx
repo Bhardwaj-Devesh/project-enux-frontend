@@ -9,6 +9,11 @@ import SearchResults from "./pages/SearchResults";
 import Onboarding from "./pages/Onboarding";
 import PlaybookDetail from "./pages/PlaybookDetail";
 import NotFound from "./pages/NotFound";
+import CreatePlaybook from './pages/CreatePlaybook';
+import MyPlaybooks from './pages/MyPlaybooks';
+import Analytics from './pages/Analytics';
+import Settings from './pages/Settings';
+import Community from './pages/Community';
 
 const queryClient = new QueryClient();
 
@@ -24,6 +29,11 @@ const App = () => (
             <Route path="/search" element={<SearchResults />} />
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/playbook/:id" element={<PlaybookDetail />} />
+            <Route path="/create" element={<CreatePlaybook />} />
+            <Route path="/my-playbooks" element={<MyPlaybooks />} />
+            <Route path="/analytics" element={<Analytics />} />
+            <Route path="/settings" element={<Settings />} />
+            <Route path="/community" element={<Community />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>

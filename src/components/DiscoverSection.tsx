@@ -2,86 +2,40 @@ import { useState } from "react";
 import { ChevronLeft, ChevronRight, ArrowRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { PlaybookCard } from "@/components/PlaybookCard";
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
+import type { Database } from '@/integrations/supabase/types';
 
-const mockPlaybooks = [
-  {
-    id: 1,
-    title: "Content Marketing Guide for MVP Launch",
-    description: "A comprehensive step-by-step guide to building content marketing strategy for your MVP launch, including social media tactics and email campaigns.",
-    author: "Sarah Chen",
-    forks: 234,
-    stars: 567,
-    tag: "Marketing",
-  },
-  {
-    id: 2,
-    title: "Seed Fundraising Playbook 2024",
-    description: "Everything you need to know about raising your first round of funding, from pitch deck creation to investor outreach strategies.",
-    author: "Michael Rodriguez",
-    forks: 189,
-    stars: 423,
-    tag: "Fundraising",
-  },
-  {
-    id: 3,
-    title: "B2B Sales Process Framework",
-    description: "Proven sales methodologies and frameworks that helped scale from $0 to $1M ARR in 18 months. Includes templates and scripts.",
-    author: "David Park",
-    forks: 156,
-    stars: 389,
-    tag: "Sales",
-  },
-  {
-    id: 4,
-    title: "Product-Market Fit Validation",
-    description: "Systematic approach to validate your product-market fit using customer interviews, surveys, and data-driven decision making.",
-    author: "Emily Johnson",
-    forks: 298,
-    stars: 672,
-    tag: "Product Launch",
-  },
-  {
-    id: 5,
-    title: "Remote Team Management",
-    description: "Best practices for managing and scaling remote teams, including communication protocols, productivity tools, and culture building.",
-    author: "Alex Thompson",
-    forks: 167,
-    stars: 445,
-    tag: "Business Strategy",
-  },
-  {
-    id: 6,
-    title: "Customer Success Playbook",
-    description: "Complete guide to building a customer success function that drives retention, expansion, and advocacy for SaaS businesses.",
-    author: "Lisa Martinez",
-    forks: 203,
-    stars: 534,
-    tag: "Customer Success",
-  },
-  {
-    id: 7,
-    title: "Growth Hacking Strategies",
-    description: "Collection of proven growth hacking tactics and experiments that have driven viral adoption for multiple startups.",
-    author: "Ryan Kim",
-    forks: 278,
-    stars: 612,
-    tag: "Marketing",
-  },
-  {
-    id: 8,
-    title: "Legal Startup Checklist",
-    description: "Essential legal documents, compliance requirements, and intellectual property strategies every startup founder needs to know.",
-    author: "Jennifer Walsh",
-    forks: 145,
-    stars: 367,
-    tag: "Legal",
-  },
-];
+function usePlaybooks() {
+  return useQuery<Database['public']['Tables']['playbooks']['Row'][]>({
+    queryKey: ['playbooks'],
+    queryFn: async () => {
+      const { data, error } = await supabase
+        .from('playbooks')
+        .select('*');
+      if (error) throw error;
+      return data || [];
+    },
+  });
+}
+
+function getTag(structure: unknown): string {
+  if (
+    structure &&
+    typeof structure === 'object' &&
+    'tags' in structure &&
+    Array.isArray((structure as any).tags)
+  ) {
+    return (structure as any).tags[0] || 'General';
+  }
+  return 'General';
+}
 
 export function DiscoverSection() {
   const [currentIndex, setCurrentIndex] = useState(0);
   const visibleCards = 3;
-  const maxIndex = Math.max(0, mockPlaybooks.length - visibleCards);
+  const { data: playbooks = [], isLoading, isError } = usePlaybooks();
+  const maxIndex = Math.max(0, playbooks.length - visibleCards);
 
   const handlePrevious = () => {
     setCurrentIndex(Math.max(0, currentIndex - 1));
@@ -91,7 +45,10 @@ export function DiscoverSection() {
     setCurrentIndex(Math.min(maxIndex, currentIndex + 1));
   };
 
-  const visiblePlaybooks = mockPlaybooks.slice(currentIndex, currentIndex + visibleCards);
+  const visiblePlaybooks = playbooks.slice(currentIndex, currentIndex + visibleCards);
+
+  if (isLoading) return <div className="p-8 text-center">Loading playbooks...</div>;
+  if (isError) return <div className="p-8 text-center text-red-500">Failed to load playbooks.</div>;
 
   return (
     <section className="py-16 bg-muted/20">
@@ -133,10 +90,10 @@ export function DiscoverSection() {
               key={playbook.id}
               title={playbook.title}
               description={playbook.description}
-              author={playbook.author}
-              forks={playbook.forks}
-              stars={playbook.stars}
-              tag={playbook.tag}
+              author={playbook.author_id || 'Unknown'}
+              forks={playbook.forks_count ?? 0}
+              stars={playbook.stars_count ?? 0}
+              tag={getTag(playbook.structure)}
               className={`animate-fade-in [animation-delay:${index * 100}ms]`}
             />
           ))}
@@ -152,7 +109,7 @@ export function DiscoverSection() {
 
         {/* Progress Indicator */}
         <div className="flex justify-center mt-6 gap-2">
-          {Array.from({ length: Math.ceil(mockPlaybooks.length / visibleCards) }).map((_, index) => (
+          {Array.from({ length: Math.ceil(playbooks.length / visibleCards) }).map((_, index) => (
             <button
               key={index}
               className={`w-2 h-2 rounded-full transition-all duration-200 ${

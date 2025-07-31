@@ -6,41 +6,26 @@ import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
 import { Star, GitFork, Download, Share2, Eye, Calendar, User, ArrowLeft } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
+import { useQuery } from '@tanstack/react-query';
+import { supabase } from '@/integrations/supabase/client';
 
 export default function PlaybookDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isGuest } = useAuth();
 
-  // Mock data for now - will be replaced with actual data fetching
-  const playbook = {
-    id: id,
-    title: "GTM Launch Playbook for Early-Stage Startups",
-    description: "A comprehensive guide to launching your go-to-market strategy for early-stage startups. Includes templates, checklists, and proven frameworks.",
-    author: "Sarah Chen",
-    authorAvatar: "/api/placeholder/40/40",
-    lastUpdated: "2024-01-15",
-    stars: 47,
-    forks: 12,
-    views: 1250,
-    tags: ["GTM", "Launch", "Early Stage", "Marketing"],
-    stage: "MVP",
-    license: "CC-BY-SA",
-    sections: [
-      "Executive Summary",
-      "Market Research & ICP",
-      "Product Positioning",
-      "Marketing Strategy",
-      "Sales Process",
-      "Launch Timeline",
-      "Success Metrics"
-    ],
-    files: [
-      { name: "launch-playbook.md", type: "markdown", size: "12 KB" },
-      { name: "icp-template.xlsx", type: "spreadsheet", size: "24 KB" },
-      { name: "marketing-timeline.pptx", type: "presentation", size: "156 KB" }
-    ]
-  };
+  const { data: playbook, isLoading, isError } = useQuery(['playbook', id], async () => {
+    const { data, error } = await supabase
+      .from('playbooks')
+      .select('*')
+      .eq('id', id)
+      .single();
+    if (error) throw error;
+    return data;
+  }, { enabled: !!id });
+
+  if (isLoading) return <div className="p-8 text-center">Loading playbook...</div>;
+  if (isError || !playbook) return <div className="p-8 text-center text-red-500">Playbook not found.</div>;
 
   const handleFork = () => {
     if (!user && !isGuest) {
