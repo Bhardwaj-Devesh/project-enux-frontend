@@ -17,11 +17,20 @@ export default function Index() {
   const [isScrolled, setIsScrolled] = useState(false);
   const [isLoginOpen, setIsLoginOpen] = useState(false);
 
-  // Redirect to onboarding if user just signed in
+  // Only redirect to onboarding for new users
   useEffect(() => {
     if (user && !loading) {
-      // Check if this is a new user (you might want to add this logic later)
-      navigate('/onboarding');
+      // Check if user has completed onboarding
+      const hasCompletedOnboarding = sessionStorage.getItem('onboarding_completed');
+      
+      // For now, let's assume users who have been here before don't need onboarding
+      // You can implement more sophisticated logic later
+      if (!hasCompletedOnboarding) {
+        // Mark onboarding as completed and stay on the main page
+        sessionStorage.setItem('onboarding_completed', 'true');
+        // Uncomment the line below if you want to redirect to onboarding for new users
+        navigate('/onboarding');
+      }
     }
   }, [user, loading, navigate]);
 

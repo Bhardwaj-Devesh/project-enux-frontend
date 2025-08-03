@@ -59,7 +59,7 @@ export default function Onboarding() {
             </div>
             
             <h1 className="text-4xl md:text-5xl font-bold mb-4">
-              Welcome{user?.user_metadata?.full_name ? `, ${user.user_metadata.full_name}` : ''}!
+              Welcome{user?.full_name ? `, ${user.full_name}` : ''}!
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto">

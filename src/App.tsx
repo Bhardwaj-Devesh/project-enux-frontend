@@ -10,6 +10,7 @@ import Onboarding from "./pages/Onboarding";
 import PlaybookDetail from "./pages/PlaybookDetail";
 import NotFound from "./pages/NotFound";
 import CreatePlaybook from './pages/CreatePlaybook';
+import BlogEditor from './pages/BlogEditor';
 import MyPlaybooks from './pages/MyPlaybooks';
 import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
@@ -30,6 +31,7 @@ const App = () => (
             <Route path="/onboarding" element={<Onboarding />} />
             <Route path="/playbook/:id" element={<PlaybookDetail />} />
             <Route path="/create" element={<CreatePlaybook />} />
+            <Route path="/blog-editor" element={<BlogEditor />} />
             <Route path="/my-playbooks" element={<MyPlaybooks />} />
             <Route path="/analytics" element={<Analytics />} />
             <Route path="/settings" element={<Settings />} />

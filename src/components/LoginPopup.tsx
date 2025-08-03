@@ -20,6 +20,7 @@ interface LoginPopupProps {
 export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [fullName, setFullName] = useState("");
   const [isSignUp, setIsSignUp] = useState(false);
 
   const { signUp, signIn, signInWithProvider, signInAsGuest } = useAuth();
@@ -29,7 +30,11 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
     if (!email || !password) return;
     
     if (isSignUp) {
-      const { error } = await signUp(email, password);
+      if (!fullName.trim()) {
+        // Show error for missing full name
+        return;
+      }
+      const { error } = await signUp(email, password, fullName);
       if (!error) {
         onClose();
       }
@@ -51,6 +56,17 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
     if (!error) {
       onClose();
     }
+  };
+
+  const resetForm = () => {
+    setEmail("");
+    setPassword("");
+    setFullName("");
+  };
+
+  const handleModeSwitch = (signUpMode: boolean) => {
+    setIsSignUp(signUpMode);
+    resetForm();
   };
 
   return (
@@ -129,6 +145,20 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
 
           {/* Sign Up Form */}
           <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignUp && (
+              <div className="space-y-2">
+                <Label htmlFor="fullName">Full Name</Label>
+                <Input
+                  id="fullName"
+                  type="text"
+                  placeholder="Enter your full name"
+                  value={fullName}
+                  onChange={(e) => setFullName(e.target.value)}
+                  required={isSignUp}
+                />
+              </div>
+            )}
+            
             <div className="space-y-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -161,7 +191,7 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => setIsSignUp(true)}
+                  onClick={() => handleModeSwitch(true)}
                   className="text-sm text-primary hover:underline"
                 >
                   Don't have an account? Sign up
@@ -173,7 +203,7 @@ export function LoginPopup({ isOpen, onClose }: LoginPopupProps) {
               <div className="text-center">
                 <button
                   type="button"
-                  onClick={() => setIsSignUp(false)}
+                  onClick={() => handleModeSwitch(false)}
                   className="text-sm text-primary hover:underline"
                 >
                   Already have an account? Sign in
