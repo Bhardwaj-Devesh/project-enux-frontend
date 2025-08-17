@@ -143,6 +143,12 @@ export function Navigation({
               <PopoverContent className="w-48" align="end">
                 {user ? (
                   <div className="space-y-2">
+                     <Link to="/my-profile" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
+                      My profile
+                    </Link>
+                    <Link to="/search" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
+                      Search Playbooks
+                    </Link>
                     <Link to="/my-playbooks" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
                       My Playbooks
                     </Link>

@@ -95,10 +95,31 @@ export default function CreatePlaybook() {
       return;
     }
 
-    // Store form data in sessionStorage and navigate to blog editor
-    sessionStorage.setItem('playbook_form_data', JSON.stringify(formData));
+    // Store form data in sessionStorage (excluding files) and navigate to blog editor
+    const formDataWithoutFiles = {
+      ...formData,
+      files: [] // Don't store files in sessionStorage
+    };
+    sessionStorage.setItem('playbook_form_data', JSON.stringify(formDataWithoutFiles));
+    
+    // Store files in a global variable that persists across navigation
+    if (formData.files.length > 0) {
+      // Store files in a global variable (window object) so they persist
+      (window as any).playbookFiles = formData.files;
+      
+      // Also store file metadata for display purposes
+      const fileMetadata = formData.files.map(file => ({
+        name: file.name,
+        size: file.size,
+        type: file.type
+      }));
+      sessionStorage.setItem('playbook_files_metadata', JSON.stringify(fileMetadata));
+    }
+    
     navigate('/blog-editor');
   };
+
+
 
   return (
     <div className="min-h-screen bg-background">

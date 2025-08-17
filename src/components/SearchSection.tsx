@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from "react";
-import { Search, TrendingUp, DollarSign, Rocket, Target, Megaphone, Users } from "lucide-react";
+import { Search, TrendingUp, DollarSign, Rocket, Target, Megaphone, Users, X } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -35,9 +35,10 @@ export function SearchSection({
 
   const handleSearch = (e: React.FormEvent) => {
     e.preventDefault();
-    if (localSearchValue.trim()) {
-      window.location.href = `/search?q=${encodeURIComponent(localSearchValue.trim())}`;
-    }
+    if (!localSearchValue.trim()) return;
+
+    // Navigate to search results page with the query
+    window.location.href = `/search?q=${encodeURIComponent(localSearchValue.trim())}`;
     onSearch?.(localSearchValue);
   };
 
@@ -48,7 +49,13 @@ export function SearchSection({
   };
 
   const handleQuickAccess = (label: string) => {
+    // Navigate to search results page with the tag
     window.location.href = `/search?tag=${encodeURIComponent(label)}`;
+  };
+
+  const clearSearch = () => {
+    setLocalSearchValue("");
+    onSearchValueChange?.("");
   };
 
   if (!isVisible) return null;
@@ -70,14 +77,26 @@ export function SearchSection({
               <Input
                 type="search"
                 placeholder="Search business strategies, playbooks, and best practices..."
-                className="pl-14 pr-6 h-16 text-lg rounded-2xl border-2 focus:border-primary bg-background shadow-lg"
+                className="pl-14 pr-20 h-16 text-lg rounded-2xl border-2 focus:border-primary bg-background shadow-lg"
                 value={localSearchValue}
                 onChange={handleInputChange}
               />
+              {localSearchValue && (
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  onClick={clearSearch}
+                  className="absolute right-20 top-1/2 -translate-y-1/2 h-8 w-8 p-0 hover:bg-muted"
+                >
+                  <X className="h-4 w-4" />
+                </Button>
+              )}
               <Button 
                 type="submit"
                 variant="default"
                 className="absolute right-2 top-1/2 -translate-y-1/2 h-12 px-6 rounded-xl"
+                disabled={!localSearchValue.trim()}
               >
                 Search
               </Button>
