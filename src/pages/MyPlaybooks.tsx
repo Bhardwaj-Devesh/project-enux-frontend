@@ -6,34 +6,19 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
 import { Badge } from '@/components/ui/badge';
-import { Edit, Eye, GitFork, Star, History, BarChart2, Search, Plus, BookOpen, Tag, Globe, Lock } from 'lucide-react';
+import { Edit, Eye, GitFork, Star, History, BarChart2, Search, Plus, BookOpen, Tag, Globe, Lock, Copy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { useNavigate } from 'react-router-dom';
 import { Navigation } from '@/components/Navigation';
-
-interface Playbook {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  stage: string;
-  owner_id: string;
-  version: string;
-  files: Record<string, string>;
-  created_at: string;
-  updated_at: string;
-  summary: string;
-  blog_content: string;
-  vector_embedding: any;
-}
+import { getEnhancedPlaybooks, EnhancedPlaybook } from '@/lib/api';
 
 const MyPlaybooks: React.FC = () => {
   const { user } = useAuth();
   const navigate = useNavigate();
-  const [filter, setFilter] = useState<'all' | 'mine' | 'others'>('all');
+  const [filter, setFilter] = useState<'all' | 'mine' | 'others' | 'forked'>('all');
   const [sort, setSort] = useState<'newest' | 'oldest' | 'stars' | 'forks' | 'views'>('newest');
   const [searchTerm, setSearchTerm] = useState('');
-  const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
+  const [playbooks, setPlaybooks] = useState<EnhancedPlaybook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
@@ -44,39 +29,8 @@ const MyPlaybooks: React.FC = () => {
         setIsLoading(true);
         setError(null);
         
-        // Get token from sessionStorage user_data or localStorage
-        const userData = sessionStorage.getItem('user_data');
-        let token = localStorage.getItem('auth_token');
-        
-        if (!token && userData) {
-          try {
-            const user = JSON.parse(userData);
-            console.log('User data from sessionStorage:', user);
-            token = user.access_token || user.token;
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-          }
-        }
-        
-        console.log('Token found:', token ? 'Yes' : 'No');
-        console.log('User from context:', user);
-        
-       
-
-        const response = await fetch('http://localhost:8000/api/v1/playbooks/my-playbooks', {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('API response:', data);
+        const data = await getEnhancedPlaybooks();
+        console.log('Enhanced API response:', data);
         setPlaybooks(data);
       } catch (err) {
         console.error('Error fetching playbooks:', err);
@@ -98,6 +52,8 @@ const MyPlaybooks: React.FC = () => {
       return matchesSearch && playbook.owner_id === user.id;
     } else if (filter === 'others' && user) {
       return matchesSearch && playbook.owner_id !== user.id;
+    } else if (filter === 'forked') {
+      return matchesSearch && playbook.is_fork;
     }
     
     return matchesSearch;
@@ -113,8 +69,8 @@ const MyPlaybooks: React.FC = () => {
         // Since API doesn't provide stars, sort by creation date as fallback
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       case 'forks':
-        // Since API doesn't provide forks, sort by creation date as fallback
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        // Use the new fork_count field from enhanced API
+        return b.fork_count - a.fork_count;
       case 'views':
         // Since API doesn't provide views, sort by creation date as fallback
         return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
@@ -168,11 +124,12 @@ const MyPlaybooks: React.FC = () => {
         <h1 className="text-3xl font-bold mb-6">My Playbooks</h1>
         
         <div className="flex flex-col md:flex-row gap-4 mb-6 items-center">
-          <Tabs value={filter} onValueChange={(value) => setFilter(value as 'all' | 'mine' | 'others')} className="flex-grow">
+          <Tabs value={filter} onValueChange={(value) => setFilter(value as 'all' | 'mine' | 'others' | 'forked')} className="flex-grow">
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
               <TabsTrigger value="mine">Mine</TabsTrigger>
               <TabsTrigger value="others">Others</TabsTrigger>
+              <TabsTrigger value="forked">Forked</TabsTrigger>
             </TabsList>
           </Tabs>
 
@@ -206,7 +163,15 @@ const MyPlaybooks: React.FC = () => {
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="flex-1">
-                    <CardTitle className="text-lg line-clamp-2">{playbook.title}</CardTitle>
+                    <div className="flex items-center gap-2 mb-1">
+                      <CardTitle className="text-lg line-clamp-2">{playbook.title}</CardTitle>
+                      {playbook.is_fork && (
+                        <Badge variant="secondary" className="flex items-center gap-1 text-xs">
+                          <Copy className="h-3 w-3" />
+                          Forked
+                        </Badge>
+                      )}
+                    </div>
                     <CardDescription className="line-clamp-2 mt-2">{playbook.description}</CardDescription>
                   </div>
                   <Badge variant="outline" className="flex items-center gap-1 ml-2">
@@ -233,11 +198,14 @@ const MyPlaybooks: React.FC = () => {
                   <p>Version: {playbook.version}</p>
                   <p>Created {new Date(playbook.created_at).toLocaleDateString()}</p>
                   <p>{Object.keys(playbook.files).length} file{Object.keys(playbook.files).length !== 1 ? 's' : ''}</p>
+                  {playbook.is_fork && playbook.forked_at && (
+                    <p>Forked {new Date(playbook.forked_at).toLocaleDateString()}</p>
+                  )}
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm mb-4">
                   <span className="flex items-center"><Star className="h-4 w-4 mr-1" /> 0</span>
-                  <span className="flex items-center"><GitFork className="h-4 w-4 mr-1" /> 0</span>
+                  <span className="flex items-center"><GitFork className="h-4 w-4 mr-1" /> {playbook.fork_count}</span>
                   <span className="flex items-center"><Eye className="h-4 w-4 mr-1" /> 0</span>
                 </div>
                 
@@ -298,12 +266,12 @@ const MyPlaybooks: React.FC = () => {
                   <p className="text-muted-foreground">My Playbooks</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + Object.keys(p.files).length, 0)}</p>
-                  <p className="text-muted-foreground">Total Files</p>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.fork_count, 0)}</p>
+                  <p className="text-muted-foreground">Total Forks</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.tags.length, 0)}</p>
-                  <p className="text-muted-foreground">Total Tags</p>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.filter(p => p.is_fork).length}</p>
+                  <p className="text-muted-foreground">Forked Playbooks</p>
                 </div>
               </div>
               <Button className="w-full mt-6" onClick={() => navigate('/analytics')}>

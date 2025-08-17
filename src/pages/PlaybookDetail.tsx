@@ -4,33 +4,19 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Star, GitFork, Download, Share2, Eye, Calendar, User, ArrowLeft, Tag, Globe, Lock, FileText } from 'lucide-react';
+import { Star, GitFork, Download, Share2, Eye, Calendar, User, ArrowLeft, Tag, Globe, Lock, FileText, Copy } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigation } from '@/components/Navigation';
-
-interface Playbook {
-  id: string;
-  title: string;
-  description: string;
-  tags: string[];
-  stage: string;
-  owner_id: string;
-  version: string;
-  files: Record<string, string>;
-  created_at: string;
-  updated_at: string;
-  latest_version: number;
-  summary: string;
-  blog_content: string;
-}
+import { getDetailedPlaybook, DetailedPlaybook, forkPlaybook } from '@/lib/api';
 
 export default function PlaybookDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isGuest } = useAuth();
-  const [playbook, setPlaybook] = useState<Playbook | null>(null);
+  const [playbook, setPlaybook] = useState<DetailedPlaybook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const [isForking, setIsForking] = useState(false);
 
   useEffect(() => {
     const fetchPlaybook = async () => {
@@ -40,35 +26,8 @@ export default function PlaybookDetail() {
         setIsLoading(true);
         setError(null);
         
-        // Get token from sessionStorage user_data or localStorage
-        const userData = sessionStorage.getItem('user_data');
-        let token = localStorage.getItem('auth_token');
-        
-        if (!token && userData) {
-          try {
-            const user = JSON.parse(userData);
-            token = user.access_token || user.token;
-          } catch (error) {
-            console.error('Error parsing user data:', error);
-          }
-        }
-        
-      
-
-        const response = await fetch(`http://localhost:8000/api/v1/playbooks/${id}`, {
-          method: 'GET',
-          headers: {
-            'Authorization': `Bearer ${token}`,
-            'Content-Type': 'application/json',
-          },
-        });
-
-        if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
-        }
-
-        const data = await response.json();
-        console.log('Playbook detail API response:', data);
+        const data = await getDetailedPlaybook(id);
+        console.log('Detailed playbook API response:', data);
         setPlaybook(data);
       } catch (err) {
         console.error('Error fetching playbook:', err);
@@ -81,7 +40,7 @@ export default function PlaybookDetail() {
     fetchPlaybook();
   }, [id]);
 
-  const handleFork = () => {
+  const handleFork = async () => {
     if (!user && !isGuest) {
       return;
     }
@@ -89,7 +48,41 @@ export default function PlaybookDetail() {
       alert("Please sign in to fork playbooks");
       return;
     }
-    console.log("Forking playbook:", id);
+    
+    // Check if user is trying to fork their own playbook
+    if (playbook && user && playbook.owner_id === user.id) {
+      alert("You cannot fork your own playbook");
+      return;
+    }
+
+    if (!playbook || !user) {
+      alert("Unable to fork playbook. Please try again.");
+      return;
+    }
+
+    try {
+      setIsForking(true);
+      
+      const response = await forkPlaybook(playbook.id);
+
+      console.log('Fork response:', response);
+      
+      // Show success message
+      alert(`Successfully forked playbook! ${response.message}`);
+      
+      // Refresh the playbook data to show updated fork count
+      const updatedPlaybook = await getDetailedPlaybook(playbook.id);
+      setPlaybook(updatedPlaybook);
+      
+      // Optionally navigate to the new forked playbook
+      // navigate(`/playbook/${response.new_playbook_id}`);
+      
+    } catch (error) {
+      console.error('Error forking playbook:', error);
+      alert(error instanceof Error ? error.message : 'Failed to fork playbook');
+    } finally {
+      setIsForking(false);
+    }
   };
 
   const handleStar = () => {
@@ -224,9 +217,15 @@ export default function PlaybookDetail() {
                 <Star className="w-4 h-4 mr-2" />
                 Star (0)
               </Button>
-              <Button variant="outline" onClick={handleFork}>
+              <Button 
+                variant="outline" 
+                onClick={handleFork}
+                disabled={isForking || (user && playbook.owner_id === user.id)}
+                className={user && playbook.owner_id === user.id ? "opacity-50 cursor-not-allowed" : ""}
+                title={user && playbook.owner_id === user.id ? "You cannot fork your own playbook" : ""}
+              >
                 <GitFork className="w-4 h-4 mr-2" />
-                Fork (0)
+                {isForking ? "Forking..." : `Fork (${playbook.fork_count})`}
               </Button>
               <Button variant="outline">
                 <Download className="w-4 h-4 mr-2" />
@@ -268,7 +267,7 @@ export default function PlaybookDetail() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Forks</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{playbook.fork_count}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Views</span>
@@ -323,6 +322,40 @@ export default function PlaybookDetail() {
                 </div>
               </CardContent>
             </Card>
+
+            {/* Forks */}
+            {playbook.forks && playbook.forks.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <GitFork className="h-5 w-5" />
+                    Forks ({playbook.forks.length})
+                  </CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {playbook.forks.map((fork, index) => (
+                    <div key={index} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent">
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center">
+                          <User className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div>
+                          <div className="font-medium text-sm">{fork.user_full_name}</div>
+                          <div className="text-xs text-muted-foreground">{fork.user_email}</div>
+                          <div className="text-xs text-muted-foreground">
+                            Forked {new Date(fork.forked_at).toLocaleDateString()} • v{fork.version}
+                          </div>
+                        </div>
+                      </div>
+                      <Badge variant="outline" className="flex items-center gap-1">
+                        <Copy className="h-3 w-3" />
+                        Fork
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            )}
 
             {/* Related Playbooks */}
             <Card>

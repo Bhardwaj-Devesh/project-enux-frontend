@@ -9,7 +9,9 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
+import { getNotifications, getNotificationCount, Notification } from "@/lib/api";
 
 interface NavigationProps {
   searchValue?: string;
@@ -27,7 +29,67 @@ export function Navigation({
   onLoginClick
 }: NavigationProps) {
   const { user, signOut } = useAuth();
+  const [notifications, setNotifications] = useState<Notification[]>([]);
+  const [notificationCount, setNotificationCount] = useState(0);
+  const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
+  const [notificationsOpen, setNotificationsOpen] = useState(false);
   
+  // Fetch notifications when user is authenticated
+  useEffect(() => {
+    if (user) {
+      fetchNotifications();
+      fetchNotificationCount();
+    } else {
+      setNotifications([]);
+      setNotificationCount(0);
+    }
+  }, [user]);
+
+  const fetchNotifications = async () => {
+    if (!user) return;
+    
+    setIsLoadingNotifications(true);
+    try {
+      const data = await getNotifications();
+      setNotifications(data);
+    } catch (error) {
+      console.error('Error fetching notifications:', error);
+    } finally {
+      setIsLoadingNotifications(false);
+    }
+  };
+
+  const fetchNotificationCount = async () => {
+    if (!user) return;
+    
+    try {
+      const data = await getNotificationCount();
+      setNotificationCount(data.count);
+    } catch (error) {
+      console.error('Error fetching notification count:', error);
+    }
+  };
+
+  // Refresh notifications when popover opens
+  const handleNotificationsOpenChange = (open: boolean) => {
+    setNotificationsOpen(open);
+    if (open && user) {
+      fetchNotifications();
+      fetchNotificationCount();
+    }
+  };
+
+  const formatNotificationTime = (createdAt: string) => {
+    const date = new Date(createdAt);
+    const now = new Date();
+    const diffInMinutes = Math.floor((now.getTime() - date.getTime()) / (1000 * 60));
+    
+    if (diffInMinutes < 1) return 'Just now';
+    if (diffInMinutes < 60) return `${diffInMinutes}m ago`;
+    if (diffInMinutes < 1440) return `${Math.floor(diffInMinutes / 60)}h ago`;
+    return `${Math.floor(diffInMinutes / 1440)}d ago`;
+  };
+
   const handleSearch = (e: React.ChangeEvent<HTMLInputElement>) => {
     onSearchChange?.(e.target.value);
   };
@@ -106,21 +168,69 @@ export function Navigation({
             </Popover>
 
             {/* Notifications */}
-            <Popover>
+            <Popover open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
               <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon">
+                <Button variant="ghost" size="icon" className="relative">
                   <Bell className="h-5 w-5" />
+                  {notificationCount > 0 && (
+                    <Badge 
+                      variant="destructive" 
+                      className="absolute -top-1 -right-1 h-5 w-5 rounded-full p-0 flex items-center justify-center text-xs"
+                    >
+                      {notificationCount > 99 ? '99+' : notificationCount}
+                    </Badge>
+                  )}
                 </Button>
               </PopoverTrigger>
-              <PopoverContent className="w-80" align="end">
+                            <PopoverContent className="w-80" align="end">
                 {user ? (
                   <div className="space-y-4">
-                    <h4 className="font-medium">Notifications</h4>
-                    <div className="space-y-2">
-                      <div className="text-sm text-muted-foreground">
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-medium">Notifications</h4>
+                      {notifications.length > 0 && (
+                        <Button variant="ghost" size="sm" className="text-xs">
+                          Mark all read
+                        </Button>
+                      )}
+                    </div>
+                    {isLoadingNotifications ? (
+                      <div className="text-sm text-muted-foreground text-center py-4">Loading...</div>
+                    ) : notifications.length === 0 ? (
+                      <div className="text-sm text-muted-foreground text-center py-4">
                         No new notifications
                       </div>
-                    </div>
+                    ) : (
+                      <div className="space-y-2 max-h-64 overflow-y-auto">
+                        {notifications.map((notification, index) => (
+                          <div key={`${notification.playbook_id}-${index}`} className="flex items-start space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                            <div className="flex-shrink-0">
+                              {notification.type === 'fork' ? (
+                                <GitFork className="h-4 w-4 text-blue-500" />
+                              ) : (
+                                <User className="h-4 w-4 text-muted-foreground" />
+                              )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                              <p className="text-sm font-medium text-foreground">{notification.user_full_name}</p>
+                              <p className="text-xs text-muted-foreground">{notification.message}</p>
+                              <p className="text-xs text-muted-foreground mt-1">{formatNotificationTime(notification.created_at)}</p>
+                            </div>
+                            {!notification.is_read && (
+                              <div className="flex-shrink-0">
+                                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                              </div>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                    {notifications.length > 0 && (
+                      <div className="border-t pt-2">
+                        <Button variant="ghost" size="sm" className="w-full text-xs">
+                          View all notifications
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 ) : (
                   <div className="text-center py-4">
