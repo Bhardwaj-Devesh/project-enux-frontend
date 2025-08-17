@@ -8,6 +8,7 @@ import { ArrowLeft, Save, Eye, EyeOff, FileText, Tag, Globe, Lock, Calendar } fr
 import { useToast } from '@/hooks/use-toast';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigation } from '@/components/Navigation';
+import { uploadPlaybook } from '@/lib/api';
 
 interface PlaybookFormData {
   title: string;
@@ -67,53 +68,38 @@ export default function BlogEditor() {
       return;
     }
 
+    // Get files from global variable
+    const files = (window as any).playbookFiles || [];
+
     setIsSubmitting(true);
 
     try {
-      // Here you would call your backend API to create the playbook
-      // For now, we'll simulate the API call
-      await new Promise(resolve => setTimeout(resolve, 2000));
-
-      // Create dummy playbook data for demo
-      const playbookId = `playbook-${Date.now()}`;
-      const playbook = {
-        id: playbookId,
+      // Call the API to upload the playbook with files
+      const response = await uploadPlaybook({
         title: formData.title,
         description: formData.description,
-        tags: formData.tags,
-        license: formData.license,
-        visibility: formData.visibility,
-        blog: blogContent,
-        files: formData.files.map(file => ({
-          name: file.name,
-          size: file.size,
-          type: file.type
-        })),
-        author: user?.full_name || 'Anonymous',
-        created_at: new Date().toISOString(),
-        stars: 0,
-        forks: 0,
-        views: 0
-      };
+        owner_id: user?.id || 'anonymous', // Fallback if user ID is not available
+        files: files,
+        blog_content: blogContent,
+      });
 
-      // Store in localStorage for demo purposes
-      const existingPlaybooks = JSON.parse(localStorage.getItem('demo_playbooks') || '[]');
-      existingPlaybooks.push(playbook);
-      localStorage.setItem('demo_playbooks', JSON.stringify(existingPlaybooks));
-
-      // Clear session storage
+      // Clear session storage and global variables
       sessionStorage.removeItem('playbook_form_data');
+      sessionStorage.removeItem('playbook_files_metadata');
+      delete (window as any).playbookFiles;
 
       toast({
         title: 'Playbook created successfully!',
-        description: 'Your playbook has been published.',
+        description: response.message || 'Your playbook has been published.',
       });
 
-      navigate(`/playbook/${playbookId}`);
+      // Navigate to the created playbook
+      navigate(`/playbook/${response.playbook.id}`);
     } catch (error) {
+      console.error('Error creating playbook:', error);
       toast({
         title: 'Failed to create playbook',
-        description: 'Please try again later.',
+        description: error instanceof Error ? error.message : 'Please try again later.',
         variant: 'destructive',
       });
     } finally {
@@ -145,8 +131,16 @@ export default function BlogEditor() {
       });
   };
 
+  // Show loading while loading form data
   if (!formData) {
-    return <div className="min-h-screen flex items-center justify-center">Loading...</div>;
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary mx-auto mb-4"></div>
+          <p>Loading...</p>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -274,30 +268,35 @@ Wrap up your playbook here..."
           </Card>
 
           {/* Files Summary */}
-          {formData.files.length > 0 && (
-            <Card className="mt-6">
-              <CardHeader>
-                <CardTitle className="text-lg">Uploaded Files</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-2">
-                  {formData.files.map((file, index) => (
-                    <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
-                      <div className="flex items-center gap-3">
-                        <FileText className="h-5 w-5 text-muted-foreground" />
-                        <div>
-                          <div className="font-medium">{file.name}</div>
-                          <div className="text-sm text-muted-foreground">
-                            {(file.size / 1024).toFixed(2)} KB
+          {(() => {
+            const fileMetadata = sessionStorage.getItem('playbook_files_metadata');
+            const files = fileMetadata ? JSON.parse(fileMetadata) : [];
+            
+            return files.length > 0 ? (
+              <Card className="mt-6">
+                <CardHeader>
+                  <CardTitle className="text-lg">Uploaded Files</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-2">
+                    {files.map((file: any, index: number) => (
+                      <div key={index} className="flex items-center justify-between p-3 border rounded-lg">
+                        <div className="flex items-center gap-3">
+                          <FileText className="h-5 w-5 text-muted-foreground" />
+                          <div>
+                            <div className="font-medium">{file.name}</div>
+                            <div className="text-sm text-muted-foreground">
+                              {(file.size / 1024).toFixed(2)} KB
+                            </div>
                           </div>
                         </div>
                       </div>
-                    </div>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
+                    ))}
+                  </div>
+                </CardContent>
+              </Card>
+            ) : null;
+          })()}
         </div>
       </div>
     </div>

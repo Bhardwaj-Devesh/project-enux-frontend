@@ -16,19 +16,15 @@ interface Playbook {
   title: string;
   description: string;
   tags: string[];
-  license: string;
-  visibility: 'public' | 'private';
-  blog: string;
-  files: Array<{
-    name: string;
-    size: number;
-    type: string;
-  }>;
-  author: string;
+  stage: string;
+  owner_id: string;
+  version: string;
+  files: Record<string, string>;
   created_at: string;
-  stars: number;
-  forks: number;
-  views: number;
+  updated_at: string;
+  summary: string;
+  blog_content: string;
+  vector_embedding: any;
 }
 
 const MyPlaybooks: React.FC = () => {
@@ -39,149 +35,59 @@ const MyPlaybooks: React.FC = () => {
   const [searchTerm, setSearchTerm] = useState('');
   const [playbooks, setPlaybooks] = useState<Playbook[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
 
-  // Create dummy playbooks for demonstration
+  // Fetch playbooks from API
   useEffect(() => {
-    const dummyPlaybooks: Playbook[] = [
-      {
-        id: 'playbook-1',
-        title: 'B2B SaaS Growth Hacking Playbook',
-        description: 'A comprehensive guide to scaling B2B SaaS companies from $0 to $10M ARR using proven growth hacking techniques.',
-        tags: ['SaaS', 'Growth', 'Marketing', 'B2B'],
-        license: 'MIT',
-        visibility: 'public',
-        blog: `# B2B SaaS Growth Hacking Playbook
+    const fetchPlaybooks = async () => {
+      try {
+        setIsLoading(true);
+        setError(null);
+        
+        // Get token from sessionStorage user_data or localStorage
+        const userData = sessionStorage.getItem('user_data');
+        let token = localStorage.getItem('auth_token');
+        
+        if (!token && userData) {
+          try {
+            const user = JSON.parse(userData);
+            console.log('User data from sessionStorage:', user);
+            token = user.access_token || user.token;
+          } catch (error) {
+            console.error('Error parsing user data:', error);
+          }
+        }
+        
+        console.log('Token found:', token ? 'Yes' : 'No');
+        console.log('User from context:', user);
+        
+       
 
-## Introduction
-This playbook covers the essential strategies and tactics for scaling B2B SaaS companies.
+        const response = await fetch('http://localhost:8000/api/v1/playbooks/my-playbooks', {
+          method: 'GET',
+          headers: {
+            'Authorization': `Bearer ${token}`,
+            'Content-Type': 'application/json',
+          },
+        });
 
-## Key Growth Channels
-- Content Marketing
-- Product-Led Growth
-- Account-Based Marketing
-- Referral Programs
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
 
-## Implementation Framework
-1. Identify your ICP
-2. Build a scalable sales process
-3. Implement product-led growth
-4. Optimize for retention`,
-        files: [
-          { name: 'growth-framework.pdf', size: 2048576, type: 'application/pdf' },
-          { name: 'sales-process.docx', size: 1048576, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
-        ],
-        author: 'Sarah Johnson',
-        created_at: '2024-01-15T10:30:00Z',
-        stars: 45,
-        forks: 12,
-        views: 1200
-      },
-      {
-        id: 'playbook-2',
-        title: 'Product Launch Strategy Guide',
-        description: 'Step-by-step process for launching successful products in competitive markets with limited resources.',
-        tags: ['Product', 'Launch', 'Strategy', 'MVP'],
-        license: 'CC-BY',
-        visibility: 'public',
-        blog: `# Product Launch Strategy Guide
-
-## Pre-Launch Phase
-- Market research and validation
-- MVP development
-- Beta testing with early adopters
-
-## Launch Phase
-- Soft launch to select users
-- Gather feedback and iterate
-- Prepare for full launch
-
-## Post-Launch
-- Monitor key metrics
-- Optimize based on data
-- Scale successful channels`,
-        files: [
-          { name: 'launch-checklist.pdf', size: 1536000, type: 'application/pdf' },
-          { name: 'metrics-dashboard.xlsx', size: 512000, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' }
-        ],
-        author: 'Mike Chen',
-        created_at: '2024-01-10T14:20:00Z',
-        stars: 32,
-        forks: 8,
-        views: 890
-      },
-      {
-        id: 'playbook-3',
-        title: 'Content Marketing Mastery',
-        description: 'Complete framework for building a content marketing engine that drives organic growth and brand awareness.',
-        tags: ['Content', 'Marketing', 'SEO', 'Brand'],
-        license: 'Apache-2.0',
-        visibility: 'private',
-        blog: `# Content Marketing Mastery
-
-## Content Strategy
-- Audience research and persona development
-- Content calendar planning
-- SEO optimization techniques
-
-## Content Creation
-- Blog post writing framework
-- Video content production
-- Social media content strategy
-
-## Distribution and Promotion
-- Email marketing automation
-- Social media promotion
-- Influencer collaboration`,
-        files: [
-          { name: 'content-calendar.xlsx', size: 768000, type: 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet' },
-          { name: 'seo-checklist.pdf', size: 1024000, type: 'application/pdf' }
-        ],
-        author: 'Lisa Park',
-        created_at: '2024-01-05T09:15:00Z',
-        stars: 28,
-        forks: 15,
-        views: 750
-      },
-      {
-        id: 'playbook-4',
-        title: 'Remote Team Management',
-        description: 'Best practices for building and managing high-performing remote teams in the digital age.',
-        tags: ['Remote', 'Management', 'Team', 'Leadership'],
-        license: 'MIT',
-        visibility: 'public',
-        blog: `# Remote Team Management
-
-## Building Remote Culture
-- Communication protocols
-- Team building activities
-- Trust and accountability
-
-## Tools and Processes
-- Project management tools
-- Communication platforms
-- Performance tracking
-
-## Leadership in Remote Settings
-- Managing distributed teams
-- Conflict resolution
-- Career development`,
-        files: [
-          { name: 'remote-policy.pdf', size: 1280000, type: 'application/pdf' },
-          { name: 'team-templates.docx', size: 896000, type: 'application/vnd.openxmlformats-officedocument.wordprocessingml.document' }
-        ],
-        author: 'David Kim',
-        created_at: '2024-01-01T16:45:00Z',
-        stars: 56,
-        forks: 22,
-        views: 1450
+        const data = await response.json();
+        console.log('API response:', data);
+        setPlaybooks(data);
+      } catch (err) {
+        console.error('Error fetching playbooks:', err);
+        setError(err instanceof Error ? err.message : 'Failed to fetch playbooks');
+      } finally {
+        setIsLoading(false);
       }
-    ];
+    };
 
-    // Load existing playbooks from localStorage and combine with dummy data
-    const existingPlaybooks = JSON.parse(localStorage.getItem('demo_playbooks') || '[]');
-    setPlaybooks([...dummyPlaybooks, ...existingPlaybooks]);
-    setIsLoading(false);
-  }, []);
+    fetchPlaybooks();
+  }, [user]);
 
   const filteredPlaybooks = playbooks.filter(playbook => {
     const matchesSearch = playbook.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
@@ -189,9 +95,9 @@ This playbook covers the essential strategies and tactics for scaling B2B SaaS c
                          playbook.tags.some(tag => tag.toLowerCase().includes(searchTerm.toLowerCase()));
     
     if (filter === 'mine' && user) {
-      return matchesSearch && playbook.author === user.full_name;
+      return matchesSearch && playbook.owner_id === user.id;
     } else if (filter === 'others' && user) {
-      return matchesSearch && playbook.author !== user.full_name;
+      return matchesSearch && playbook.owner_id !== user.id;
     }
     
     return matchesSearch;
@@ -204,11 +110,14 @@ This playbook covers the essential strategies and tactics for scaling B2B SaaS c
       case 'oldest':
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       case 'stars':
-        return b.stars - a.stars;
+        // Since API doesn't provide stars, sort by creation date as fallback
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       case 'forks':
-        return b.forks - a.forks;
+        // Since API doesn't provide forks, sort by creation date as fallback
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       case 'views':
-        return b.views - a.views;
+        // Since API doesn't provide views, sort by creation date as fallback
+        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
       default:
         return 0;
     }
@@ -223,7 +132,33 @@ This playbook covers the essential strategies and tactics for scaling B2B SaaS c
     console.log('Edit playbook:', playbookId);
   };
 
-  if (isLoading) return <div className="container mx-auto p-4">Loading playbooks...</div>;
+  if (isLoading) return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary mx-auto mb-4"></div>
+            <p className="text-muted-foreground">Loading playbooks...</p>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+
+  if (error) return (
+    <div className="min-h-screen bg-background">
+      <Navigation />
+      <div className="container mx-auto p-4">
+        <div className="flex items-center justify-center py-12">
+          <div className="text-center">
+            <p className="text-destructive mb-4">Error: {error}</p>
+            <Button onClick={() => window.location.reload()}>Try Again</Button>
+          </div>
+        </div>
+      </div>
+    </div>
+  );
 
   return (
     <div className="min-h-screen bg-background">
@@ -275,8 +210,8 @@ This playbook covers the essential strategies and tactics for scaling B2B SaaS c
                     <CardDescription className="line-clamp-2 mt-2">{playbook.description}</CardDescription>
                   </div>
                   <Badge variant="outline" className="flex items-center gap-1 ml-2">
-                    {playbook.visibility === 'public' ? <Globe className="h-3 w-3" /> : <Lock className="h-3 w-3" />}
-                    {playbook.visibility}
+                    <Globe className="h-3 w-3" />
+                    {playbook.stage}
                   </Badge>
                 </div>
                 
@@ -295,22 +230,22 @@ This playbook covers the essential strategies and tactics for scaling B2B SaaS c
               
               <CardContent className="flex-grow flex flex-col justify-between">
                 <div className="text-sm text-muted-foreground mb-4">
-                  <p>By {playbook.author}</p>
+                  <p>Version: {playbook.version}</p>
                   <p>Created {new Date(playbook.created_at).toLocaleDateString()}</p>
-                  <p>{playbook.files.length} file{playbook.files.length !== 1 ? 's' : ''}</p>
+                  <p>{Object.keys(playbook.files).length} file{Object.keys(playbook.files).length !== 1 ? 's' : ''}</p>
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm mb-4">
-                  <span className="flex items-center"><Star className="h-4 w-4 mr-1" /> {playbook.stars}</span>
-                  <span className="flex items-center"><GitFork className="h-4 w-4 mr-1" /> {playbook.forks}</span>
-                  <span className="flex items-center"><Eye className="h-4 w-4 mr-1" /> {playbook.views}</span>
+                  <span className="flex items-center"><Star className="h-4 w-4 mr-1" /> 0</span>
+                  <span className="flex items-center"><GitFork className="h-4 w-4 mr-1" /> 0</span>
+                  <span className="flex items-center"><Eye className="h-4 w-4 mr-1" /> 0</span>
                 </div>
                 
                 <div className="flex gap-2 mt-auto">
                   <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleView(playbook.id); }}>
                     <Eye className="h-4 w-4 mr-2" /> View
                   </Button>
-                  {playbook.author === user?.full_name && (
+                  {playbook.owner_id === user?.id && (
                     <Button variant="outline" size="sm" onClick={(e) => { e.stopPropagation(); handleEdit(playbook.id); }}>
                       <Edit className="h-4 w-4 mr-2" /> Edit
                     </Button>
@@ -359,16 +294,16 @@ This playbook covers the essential strategies and tactics for scaling B2B SaaS c
                   <p className="text-muted-foreground">Playbooks</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.stars, 0)}</p>
-                  <p className="text-muted-foreground">Stars</p>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.filter(p => p.owner_id === user?.id).length}</p>
+                  <p className="text-muted-foreground">My Playbooks</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.forks, 0)}</p>
-                  <p className="text-muted-foreground">Forks</p>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + Object.keys(p.files).length, 0)}</p>
+                  <p className="text-muted-foreground">Total Files</p>
                 </div>
                 <div>
-                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.views, 0)}</p>
-                  <p className="text-muted-foreground">Views</p>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.tags.length, 0)}</p>
+                  <p className="text-muted-foreground">Total Tags</p>
                 </div>
               </div>
               <Button className="w-full mt-6" onClick={() => navigate('/analytics')}>
