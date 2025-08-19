@@ -4,10 +4,12 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Separator } from '@/components/ui/separator';
-import { Star, GitFork, Download, Share2, Eye, Calendar, User, ArrowLeft, Tag, Globe, Lock, FileText, Copy } from 'lucide-react';
+import { Star, GitFork, Download, Share2, Eye, Calendar, User, ArrowLeft, Tag, Globe, Lock, FileText, Copy, GitPullRequest } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigation } from '@/components/Navigation';
 import { getDetailedPlaybook, DetailedPlaybook, forkPlaybook } from '@/lib/api';
+import { CreatePRModal } from '@/components/CreatePRModal';
+import { PullRequestList } from '@/components/PullRequestList';
 
 export default function PlaybookDetail() {
   const { id } = useParams();
@@ -17,6 +19,7 @@ export default function PlaybookDetail() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isForking, setIsForking] = useState(false);
+  const [showCreatePRModal, setShowCreatePRModal] = useState(false);
 
   useEffect(() => {
     const fetchPlaybook = async () => {
@@ -94,6 +97,22 @@ export default function PlaybookDetail() {
       return;
     }
     console.log("Starring playbook:", id);
+  };
+
+  const handleCreatePR = () => {
+    if (!user && !isGuest) {
+      return;
+    }
+    if (isGuest) {
+      alert("Please sign in to create pull requests");
+      return;
+    }
+    setShowCreatePRModal(true);
+  };
+
+  const handlePRSuccess = (prId: string) => {
+    // Navigate to the new PR
+    navigate(`/pull-request/${prId}`);
   };
 
   const renderMarkdownContent = (content: string) => {
@@ -227,6 +246,16 @@ export default function PlaybookDetail() {
                 <GitFork className="w-4 h-4 mr-2" />
                 {isForking ? "Forking..." : `Fork (${playbook.fork_count})`}
               </Button>
+              <Button 
+                variant="outline" 
+                onClick={handleCreatePR}
+                disabled={user && playbook.owner_id === user.id}
+                className={user && playbook.owner_id === user.id ? "opacity-50 cursor-not-allowed" : ""}
+                title={user && playbook.owner_id === user.id ? "You cannot create PRs for your own playbook" : ""}
+              >
+                <GitPullRequest className="w-4 h-4 mr-2" />
+                Create PR
+              </Button>
               <Button variant="outline">
                 <Download className="w-4 h-4 mr-2" />
                 Download
@@ -357,6 +386,12 @@ export default function PlaybookDetail() {
               </Card>
             )}
 
+            {/* Pull Requests */}
+            <PullRequestList 
+              playbookId={playbook.id}
+              onCreatePR={handleCreatePR}
+            />
+
             {/* Related Playbooks */}
             <Card>
               <CardHeader>
@@ -378,6 +413,19 @@ export default function PlaybookDetail() {
           </div>
         </div>
       </div>
+
+      {/* Create PR Modal */}
+      {playbook && (
+        <CreatePRModal
+          isOpen={showCreatePRModal}
+          onClose={() => setShowCreatePRModal(false)}
+          playbookId={playbook.id}
+          currentContent={playbook.blog_content}
+                     baseVersionId={playbook.current_version_id} // Use the current version ID from API
+          playbookTitle={playbook.title}
+          onSuccess={handlePRSuccess}
+        />
+      )}
     </div>
   );
 }

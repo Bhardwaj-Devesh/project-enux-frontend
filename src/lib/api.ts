@@ -196,6 +196,7 @@ export interface ForkInfo {
 export interface DetailedPlaybook extends Playbook {
   fork_count: number;
   forks: ForkInfo[];
+  current_version_id: string;
 }
 
 export interface ForkResponse {
@@ -419,6 +420,387 @@ export async function forkPlaybook(playbookId: string): Promise<ForkResponse> {
         'Content-Type': 'application/json',
       },
       body: JSON.stringify(requestBody),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+// Pull Request Types and Interfaces
+export interface PullRequest {
+  id: string;
+  playbook_id: string;
+  author_id: string;
+  base_version_id: string;
+  title: string;
+  description: string;
+  old_blog_text: string;
+  new_blog_text: string;
+  unified_diff: string;
+  status: 'OPEN' | 'MERGED' | 'CLOSED' | 'DECLINED';
+  created_at: string;
+  updated_at: string;
+  merged_at: string | null;
+  merged_by: string | null;
+  merge_message: string | null;
+  new_version_id: string | null;
+  author_name: string;
+  playbook_title: string;
+  base_version_number: number;
+  new_version_number: number | null;
+}
+
+export interface CreatePullRequestRequest {
+  title: string;
+  description: string;
+  new_blog_text: string;
+  base_version_id: string;
+}
+
+export interface CreatePullRequestResponse {
+  pull_request: PullRequest;
+  message: string;
+}
+
+export interface PullRequestListResponse {
+  pull_requests: PullRequest[];
+  total_count: number;
+  has_more: boolean;
+}
+
+export interface SideBySideLine {
+  line: number;
+  content: string;
+  type: 'unchanged' | 'added' | 'deleted';
+}
+
+export interface SideBySideDiff {
+  has_changes: boolean;
+  old_lines: SideBySideLine[];
+  new_lines: SideBySideLine[];
+  changes: Array<{
+    type: string;
+    old_start: number;
+    old_end: number;
+    new_start: number;
+    new_end: number;
+  }>;
+}
+
+export interface PullRequestDiffResponse {
+  unified_diff: string;
+  side_by_side_diff?: SideBySideDiff;
+  html_diff?: string;
+  format?: string;
+}
+
+export interface MergePullRequestRequest {
+  merge_message?: string;
+}
+
+export interface MergePullRequestResponse {
+  status: string;
+  new_version_id: string;
+  version_number: number;
+  message: string;
+}
+
+// Pull Request API Functions
+export async function createPullRequest(
+  playbookId: string, 
+  data: CreatePullRequestRequest
+): Promise<CreatePullRequestResponse> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pull-requests/playbooks/${playbookId}/pull-requests`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify(data),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function getPullRequests(playbookId: string): Promise<PullRequestListResponse> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pull-requests/playbooks/${playbookId}/pull-requests`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function getPullRequest(prId: string): Promise<PullRequest> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pull-requests/${prId}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function getPullRequestDiff(
+  prId: string, 
+  format: 'unified' | 'side-by-side' | 'html' = 'unified'
+): Promise<PullRequestDiffResponse> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const params = new URLSearchParams();
+    if (format !== 'unified') {
+      params.append('format', format);
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pull-requests/${prId}/diff?${params}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function mergePullRequest(
+  prId: string, 
+  mergeMessage?: string
+): Promise<MergePullRequestResponse> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    // Build URL with query parameters
+    const url = new URL(`${API_BASE_URL}/pull-requests/${prId}/merge`);
+    if (mergeMessage) {
+      url.searchParams.append('merge_message', mergeMessage);
+    }
+
+    const response = await fetch(url.toString(), {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function closePullRequest(prId: string): Promise<PullRequest> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pull-requests/${prId}/close`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function declinePullRequest(prId: string): Promise<PullRequest> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/pull-requests/${prId}/decline`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
     });
 
     if (!response.ok) {

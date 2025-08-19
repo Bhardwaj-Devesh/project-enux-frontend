@@ -2,6 +2,16 @@
 @tailwind components;
 @tailwind utilities;
 
+/* Custom utilities */
+@layer utilities {
+  .line-clamp-2 {
+    display: -webkit-box;
+    -webkit-line-clamp: 2;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
+  }
+}
+
 /* Enux Design System - Modern colors for collaborative business platform */
 
 @layer base {
@@ -32,8 +42,8 @@
     --muted-foreground: 215 16% 47%;
 
     /* Accent - Warm Orange for CTAs */
-    --accent: 25 85% 58%;
-    --accent-foreground: 0 0% 100%;
+    --accent: 214 20% 96%;        /* light neutral gray */
+    --accent-foreground: 215 25% 25%; /* dark text */
 
     /* Success - Growth Green */
     --success: 142 71% 45%;

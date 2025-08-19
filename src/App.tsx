@@ -16,6 +16,7 @@ import Analytics from './pages/Analytics';
 import Settings from './pages/Settings';
 import Community from './pages/Community';
 import Profile from './pages/Profile';
+import PullRequestDetail from './pages/PullRequestDetail';
 
 const queryClient = new QueryClient();
 
@@ -38,6 +39,7 @@ const App = () => (
             <Route path="/settings" element={<Settings />} />
             <Route path="/community" element={<Community />} />
             <Route path="/my-profile" element={<Profile />} />
+            <Route path="/pull-request/:id" element={<PullRequestDetail />} />
             {/* ADD ALL CUSTOM ROUTES ABOVE THE CATCH-ALL "*" ROUTE */}
             <Route path="*" element={<NotFound />} />
           </Routes>
