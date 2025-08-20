@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { Search, Plus, Bell, User, GitFork, Star, BookOpen } from "lucide-react";
+import { Link, useNavigate } from "react-router-dom";
+import { Search, Plus, Bell, User, GitFork, Star, BookOpen, GitPullRequest } from "lucide-react";
 import { useAuth } from "@/hooks/useAuth";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -29,6 +29,7 @@ export function Navigation({
   onLoginClick
 }: NavigationProps) {
   const { user, signOut } = useAuth();
+  const navigate = useNavigate();
   const [notifications, setNotifications] = useState<Notification[]>([]);
   const [notificationCount, setNotificationCount] = useState(0);
   const [isLoadingNotifications, setIsLoadingNotifications] = useState(false);
@@ -140,6 +141,32 @@ export function Navigation({
     }
   };
 
+  const handleNotificationClick = async (notification: Notification) => {
+    try {
+      // Mark notification as read
+      await handleMarkAsRead(notification.id);
+      
+      // Close the notifications popover
+      setNotificationsOpen(false);
+      
+      // Handle navigation based on notification type
+      if (notification.type === 'pr_created') {
+        if (notification.pr_id) {
+          // If we have a PR ID, navigate to the pull request detail page
+          navigate(`/pull-request/${notification.pr_id}`);
+        } else if (notification.playbook_id) {
+          // Otherwise, navigate to the playbook detail page
+          navigate(`/playbook/${notification.playbook_id}`);
+        }
+      }
+      // Add more notification types here as needed
+    } catch (error) {
+      console.error('Error handling notification click:', error);
+      // Still close the popover even if there's an error
+      setNotificationsOpen(false);
+    }
+  };
+
   return (
     <nav className={cn(
       "sticky top-0 z-50 w-full border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60",
@@ -219,11 +246,13 @@ export function Navigation({
                           <div 
                             key={notification.id} 
                             className="flex items-start space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
-                            onClick={() => handleMarkAsRead(notification.id)}
+                            onClick={() => handleNotificationClick(notification)}
                           >
                             <div className="flex-shrink-0">
                               {notification.type === 'fork' ? (
                                 <GitFork className="h-4 w-4 text-blue-500" />
+                              ) : notification.type === 'pr_created' ? (
+                                <GitPullRequest className="h-4 w-4 text-green-500" />
                               ) : (
                                 <User className="h-4 w-4 text-muted-foreground" />
                               )}

@@ -173,6 +173,7 @@ export interface Notification {
   user_email: string;
   user_full_name: string;
   fork_id?: string;
+  pr_id?: string;
   is_read: boolean;
   read_at: string | null;
   created_at: string;
