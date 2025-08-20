@@ -66,14 +66,11 @@ const MyPlaybooks: React.FC = () => {
       case 'oldest':
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       case 'stars':
-        // Since API doesn't provide stars, sort by creation date as fallback
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return b.star_count - a.star_count;
       case 'forks':
-        // Use the new fork_count field from enhanced API
         return b.fork_count - a.fork_count;
       case 'views':
-        // Since API doesn't provide views, sort by creation date as fallback
-        return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        return b.view_count - a.view_count;
       default:
         return 0;
     }
@@ -127,8 +124,6 @@ const MyPlaybooks: React.FC = () => {
           <Tabs value={filter} onValueChange={(value) => setFilter(value as 'all' | 'mine' | 'others' | 'forked')} className="flex-grow">
             <TabsList>
               <TabsTrigger value="all">All</TabsTrigger>
-              <TabsTrigger value="mine">Mine</TabsTrigger>
-              <TabsTrigger value="others">Others</TabsTrigger>
               <TabsTrigger value="forked">Forked</TabsTrigger>
             </TabsList>
           </Tabs>
@@ -204,9 +199,9 @@ const MyPlaybooks: React.FC = () => {
                 </div>
                 
                 <div className="flex items-center gap-4 text-sm mb-4">
-                  <span className="flex items-center"><Star className="h-4 w-4 mr-1" /> 0</span>
+                  <span className="flex items-center"><Star className="h-4 w-4 mr-1" /> {playbook.star_count}</span>
                   <span className="flex items-center"><GitFork className="h-4 w-4 mr-1" /> {playbook.fork_count}</span>
-                  <span className="flex items-center"><Eye className="h-4 w-4 mr-1" /> 0</span>
+                  <span className="flex items-center"><Eye className="h-4 w-4 mr-1" /> {playbook.view_count}</span>
                 </div>
                 
                 <div className="flex gap-2 mt-auto">
@@ -256,7 +251,7 @@ const MyPlaybooks: React.FC = () => {
               <CardDescription>Mini analytics for your playbooks.</CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="grid grid-cols-2 gap-4 text-center">
+              <div className="grid grid-cols-3 gap-4 text-center">
                 <div>
                   <p className="text-2xl font-bold">{sortedPlaybooks.length}</p>
                   <p className="text-muted-foreground">Playbooks</p>
@@ -268,6 +263,14 @@ const MyPlaybooks: React.FC = () => {
                 <div>
                   <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.fork_count, 0)}</p>
                   <p className="text-muted-foreground">Total Forks</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.star_count, 0)}</p>
+                  <p className="text-muted-foreground">Total Stars</p>
+                </div>
+                <div>
+                  <p className="text-2xl font-bold">{sortedPlaybooks.reduce((sum, p) => sum + p.view_count, 0)}</p>
+                  <p className="text-muted-foreground">Total Views</p>
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{sortedPlaybooks.filter(p => p.is_fork).length}</p>

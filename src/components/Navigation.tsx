@@ -11,7 +11,7 @@ import {
 } from "@/components/ui/popover";
 import { Badge } from "@/components/ui/badge";
 import { cn } from "@/lib/utils";
-import { getNotifications, getNotificationCount, Notification } from "@/lib/api";
+import { getNotifications, getNotificationCount, markNotificationsAsRead, markAllNotificationsAsRead, deleteNotification, Notification } from "@/lib/api";
 
 interface NavigationProps {
   searchValue?: string;
@@ -50,7 +50,7 @@ export function Navigation({
     
     setIsLoadingNotifications(true);
     try {
-      const data = await getNotifications();
+      const data = await getNotifications(10); // Limit to 10 notifications for the dropdown
       setNotifications(data);
     } catch (error) {
       console.error('Error fetching notifications:', error);
@@ -64,7 +64,7 @@ export function Navigation({
     
     try {
       const data = await getNotificationCount();
-      setNotificationCount(data.count);
+      setNotificationCount(data.unread_count);
     } catch (error) {
       console.error('Error fetching notification count:', error);
     }
@@ -98,6 +98,45 @@ export function Navigation({
     e.preventDefault();
     if (searchValue.trim()) {
       window.location.href = `/search?q=${encodeURIComponent(searchValue.trim())}`;
+    }
+  };
+
+  const handleMarkAllAsRead = async () => {
+    if (!user || notifications.length === 0) return;
+    
+    try {
+      await markAllNotificationsAsRead();
+      // Refresh notifications and count
+      await fetchNotifications();
+      await fetchNotificationCount();
+    } catch (error) {
+      console.error('Error marking all notifications as read:', error);
+    }
+  };
+
+  const handleMarkAsRead = async (notificationId: string) => {
+    if (!user) return;
+    
+    try {
+      await markNotificationsAsRead([notificationId]);
+      // Refresh notifications and count
+      await fetchNotifications();
+      await fetchNotificationCount();
+    } catch (error) {
+      console.error('Error marking notification as read:', error);
+    }
+  };
+
+  const handleDeleteNotification = async (notificationId: string) => {
+    if (!user) return;
+    
+    try {
+      await deleteNotification(notificationId);
+      // Refresh notifications and count
+      await fetchNotifications();
+      await fetchNotificationCount();
+    } catch (error) {
+      console.error('Error deleting notification:', error);
     }
   };
 
@@ -136,36 +175,6 @@ export function Navigation({
 
           {/* Right side actions */}
           <div className="flex items-center space-x-2">
-            {/* Add Button */}
-            <Popover>
-              <PopoverTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <Plus className="h-5 w-5" />
-                </Button>
-              </PopoverTrigger>
-              <PopoverContent className="w-48" align="end">
-                {user ? (
-                  <div className="space-y-2">
-                    <Link to="/create" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
-                      Create Playbook
-                    </Link>
-                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
-                      Import Playbook
-                    </button>
-                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
-                      Upload Files
-                    </button>
-                  </div>
-                ) : (
-                  <div className="text-center py-4">
-                    <p className="text-sm text-muted-foreground mb-3">
-                      Sign in to create content
-                    </p>
-                    <Button size="sm" onClick={onLoginClick}>Sign In</Button>
-                  </div>
-                )}
-              </PopoverContent>
-            </Popover>
 
             {/* Notifications */}
             <Popover open={notificationsOpen} onOpenChange={handleNotificationsOpenChange}>
@@ -188,7 +197,12 @@ export function Navigation({
                     <div className="flex items-center justify-between">
                       <h4 className="font-medium">Notifications</h4>
                       {notifications.length > 0 && (
-                        <Button variant="ghost" size="sm" className="text-xs">
+                        <Button 
+                          variant="ghost" 
+                          size="sm" 
+                          className="text-xs"
+                          onClick={handleMarkAllAsRead}
+                        >
                           Mark all read
                         </Button>
                       )}
@@ -201,8 +215,12 @@ export function Navigation({
                       </div>
                     ) : (
                       <div className="space-y-2 max-h-64 overflow-y-auto">
-                        {notifications.map((notification, index) => (
-                          <div key={`${notification.playbook_id}-${index}`} className="flex items-start space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer">
+                        {notifications.map((notification) => (
+                          <div 
+                            key={notification.id} 
+                            className="flex items-start space-x-2 p-2 rounded-md hover:bg-muted/50 cursor-pointer"
+                            onClick={() => handleMarkAsRead(notification.id)}
+                          >
                             <div className="flex-shrink-0">
                               {notification.type === 'fork' ? (
                                 <GitFork className="h-4 w-4 text-blue-500" />
@@ -211,15 +229,24 @@ export function Navigation({
                               )}
                             </div>
                             <div className="flex-1 min-w-0">
-                              <p className="text-sm font-medium text-foreground">{notification.user_full_name}</p>
+                              <p className="text-sm font-medium text-foreground">{notification.title}</p>
                               <p className="text-xs text-muted-foreground">{notification.message}</p>
                               <p className="text-xs text-muted-foreground mt-1">{formatNotificationTime(notification.created_at)}</p>
                             </div>
-                            {!notification.is_read && (
-                              <div className="flex-shrink-0">
+                            <div className="flex-shrink-0 flex items-center space-x-1">
+                              {!notification.is_read && (
                                 <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                              </div>
-                            )}
+                              )}
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  handleDeleteNotification(notification.id);
+                                }}
+                                className="text-muted-foreground hover:text-destructive text-xs"
+                              >
+                                ×
+                              </button>
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -256,15 +283,15 @@ export function Navigation({
                      <Link to="/my-profile" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
                       My profile
                     </Link>
+                    <Link to="/create" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
+                      Create Playbook
+                    </Link>
                     <Link to="/search" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
                       Search Playbooks
                     </Link>
                     <Link to="/my-playbooks" className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md block">
                       My Playbooks
                     </Link>
-                    <button className="w-full text-left px-3 py-2 text-sm hover:bg-muted rounded-md">
-                      Settings
-                    </button>
                     <div className="border-t pt-2">
                       <button 
                         onClick={signOut}

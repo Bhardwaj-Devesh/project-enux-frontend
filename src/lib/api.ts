@@ -163,19 +163,43 @@ export async function uploadPlaybook(data: PlaybookUploadRequest): Promise<Playb
 }
 
 export interface Notification {
+  id: string;
   type: string;
+  title: string;
   message: string;
   playbook_id: string;
   playbook_title: string;
   user_id: string;
   user_email: string;
   user_full_name: string;
-  created_at: string;
+  fork_id?: string;
   is_read: boolean;
+  read_at: string | null;
+  created_at: string;
+  updated_at: string;
 }
 
 export interface NotificationCount {
-  count: number;
+  unread_count: number;
+  total_count: number;
+}
+
+export interface MarkReadRequest {
+  notification_ids: string[];
+}
+
+export interface MarkReadResponse {
+  updated_count: number;
+  message: string;
+}
+
+export interface MarkAllReadResponse {
+  updated_count: number;
+  message: string;
+}
+
+export interface DeleteNotificationResponse {
+  message: string;
 }
 
 export interface EnhancedPlaybook extends Playbook {
@@ -183,6 +207,8 @@ export interface EnhancedPlaybook extends Playbook {
   is_fork: boolean;
   forked_at: string | null;
   original_playbook_id: string | null;
+  star_count: number;
+  view_count: number;
 }
 
 export interface ForkInfo {
@@ -197,6 +223,9 @@ export interface DetailedPlaybook extends Playbook {
   fork_count: number;
   forks: ForkInfo[];
   current_version_id: string;
+  star_count: number;
+  view_count: number;
+  is_starred?: boolean;
 }
 
 export interface ForkResponse {
@@ -211,7 +240,7 @@ export interface ForkRequest {
   user_id: string;
 }
 
-export async function getNotifications(): Promise<Notification[]> {
+export async function getNotifications(limit?: number): Promise<Notification[]> {
   try {
     // Get authentication token from sessionStorage
     const userData = sessionStorage.getItem('user_data');
@@ -230,7 +259,12 @@ export async function getNotifications(): Promise<Notification[]> {
       throw new Error('Authentication token not found. Please sign in again.');
     }
 
-    const response = await fetch(`${API_BASE_URL}/playbooks/notifications`, {
+    const params = new URLSearchParams();
+    if (limit) {
+      params.append('limit', limit.toString());
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/notifications?${params}`, {
       method: 'GET',
       headers: {
         'Authorization': `Bearer ${token}`,
@@ -273,6 +307,132 @@ export async function getNotificationCount(): Promise<NotificationCount> {
 
     const response = await fetch(`${API_BASE_URL}/playbooks/notifications/count`, {
       method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function markNotificationsAsRead(notificationIds: string[]): Promise<MarkReadResponse> {
+  try {
+    // Get authentication token from sessionStorage
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/notifications/mark-read`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        notification_ids: notificationIds
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function markAllNotificationsAsRead(): Promise<MarkAllReadResponse> {
+  try {
+    // Get authentication token from sessionStorage
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/notifications/mark-all-read`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function deleteNotification(notificationId: string): Promise<DeleteNotificationResponse> {
+  try {
+    // Get authentication token from sessionStorage
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/notifications/${notificationId}`, {
+      method: 'DELETE',
       headers: {
         'Authorization': `Bearer ${token}`,
         'Content-Type': 'application/json',
@@ -809,6 +969,193 @@ export async function declinePullRequest(prId: string): Promise<PullRequest> {
     }
 
     return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export interface PopularPlaybook {
+  playbook_id: string;
+  title: string;
+  description: string;
+  star_count: number;
+  view_count: number;
+  created_at: string;
+}
+
+export interface StarResponse {
+  playbook_id: string;
+  starred: boolean;
+  star_count: number;
+  message: string;
+}
+
+export async function starPlaybook(playbookId: string): Promise<StarResponse> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/${playbookId}/star`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        playbook_id: playbookId
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function getPopularPlaybooks(limit: number = 5): Promise<PopularPlaybook[]> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const params = new URLSearchParams({
+      limit: limit.toString()
+    });
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/popular?${params}`, {
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function unstarPlaybook(playbookId: string): Promise<StarResponse> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/${playbookId}/star`, {
+      method: 'DELETE',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    return response.json();
+  } catch (error) {
+    if (error instanceof TypeError && error.message.includes('fetch')) {
+      throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');
+    }
+    throw error;
+  }
+}
+
+export async function incrementPlaybookView(playbookId: string): Promise<void> {
+  try {
+    const userData = sessionStorage.getItem('user_data');
+    let token = null;
+    
+    if (userData) {
+      try {
+        const userDataParsed = JSON.parse(userData);
+        token = userDataParsed.access_token || userDataParsed.token || userDataParsed.jwt || userDataParsed.accessToken;
+      } catch (error) {
+        console.error('Error parsing user data:', error);
+      }
+    }
+
+    if (!token) {
+      throw new Error('Authentication token not found. Please sign in again.');
+    }
+
+    const response = await fetch(`${API_BASE_URL}/playbooks/${playbookId}/view`, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${token}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        playbook_id: playbookId
+      }),
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({}));
+      throw new Error(errorData.message || errorData.detail || `HTTP error! status: ${response.status}`);
+    }
+
+    // View increment doesn't return data, just success/failure
+    return;
   } catch (error) {
     if (error instanceof TypeError && error.message.includes('fetch')) {
       throw new Error('Network error: Unable to connect to the server. Please check your internet connection.');

@@ -7,19 +7,22 @@ import { Separator } from '@/components/ui/separator';
 import { Star, GitFork, Download, Share2, Eye, Calendar, User, ArrowLeft, Tag, Globe, Lock, FileText, Copy, GitPullRequest } from 'lucide-react';
 import { useAuth } from '@/hooks/useAuth';
 import { Navigation } from '@/components/Navigation';
-import { getDetailedPlaybook, DetailedPlaybook, forkPlaybook } from '@/lib/api';
+import { getDetailedPlaybook, DetailedPlaybook, forkPlaybook, starPlaybook, unstarPlaybook, incrementPlaybookView } from '@/lib/api';
 import { CreatePRModal } from '@/components/CreatePRModal';
 import { PullRequestList } from '@/components/PullRequestList';
+import { useToast } from '@/hooks/use-toast';
 
 export default function PlaybookDetail() {
   const { id } = useParams();
   const navigate = useNavigate();
   const { user, isGuest } = useAuth();
+  const { toast } = useToast();
   const [playbook, setPlaybook] = useState<DetailedPlaybook | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isForking, setIsForking] = useState(false);
   const [showCreatePRModal, setShowCreatePRModal] = useState(false);
+  const [isStarring, setIsStarring] = useState(false);
 
   useEffect(() => {
     const fetchPlaybook = async () => {
@@ -32,6 +35,15 @@ export default function PlaybookDetail() {
         const data = await getDetailedPlaybook(id);
         console.log('Detailed playbook API response:', data);
         setPlaybook(data);
+        
+        // Increment view count when playbook is loaded
+        try {
+          await incrementPlaybookView(id);
+          console.log('View count incremented successfully');
+        } catch (viewError) {
+          console.error('Error incrementing view count:', viewError);
+          // Don't show error to user for view count increment failure
+        }
       } catch (err) {
         console.error('Error fetching playbook:', err);
         setError(err instanceof Error ? err.message : 'Failed to fetch playbook');
@@ -48,18 +60,30 @@ export default function PlaybookDetail() {
       return;
     }
     if (isGuest) {
-      alert("Please sign in to fork playbooks");
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to fork playbooks",
+        variant: "destructive",
+      });
       return;
     }
     
     // Check if user is trying to fork their own playbook
     if (playbook && user && playbook.owner_id === user.id) {
-      alert("You cannot fork your own playbook");
+      toast({
+        title: "Cannot Fork",
+        description: "You cannot fork your own playbook",
+        variant: "destructive",
+      });
       return;
     }
 
     if (!playbook || !user) {
-      alert("Unable to fork playbook. Please try again.");
+      toast({
+        title: "Error",
+        description: "Unable to fork playbook. Please try again.",
+        variant: "destructive",
+      });
       return;
     }
 
@@ -71,7 +95,10 @@ export default function PlaybookDetail() {
       console.log('Fork response:', response);
       
       // Show success message
-      alert(`Successfully forked playbook! ${response.message}`);
+      toast({
+        title: "Success",
+        description: `Successfully forked playbook! ${response.message}`,
+      });
       
       // Refresh the playbook data to show updated fork count
       const updatedPlaybook = await getDetailedPlaybook(playbook.id);
@@ -82,21 +109,72 @@ export default function PlaybookDetail() {
       
     } catch (error) {
       console.error('Error forking playbook:', error);
-      alert(error instanceof Error ? error.message : 'Failed to fork playbook');
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to fork playbook',
+        variant: "destructive",
+      });
     } finally {
       setIsForking(false);
     }
   };
 
-  const handleStar = () => {
+  const handleStar = async () => {
     if (!user && !isGuest) {
       return;
     }
     if (isGuest) {
-      alert("Please sign in to star playbooks");
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to star playbooks",
+        variant: "destructive",
+      });
       return;
     }
-    console.log("Starring playbook:", id);
+    
+    if (!playbook) {
+      toast({
+        title: "Error",
+        description: "Unable to star playbook. Please try again.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      setIsStarring(true);
+      
+      let response;
+      if (playbook.is_starred) {
+        response = await unstarPlaybook(playbook.id);
+        toast({
+          title: "Success",
+          description: "Playbook unstarred successfully",
+        });
+      } else {
+        response = await starPlaybook(playbook.id);
+        toast({
+          title: "Success",
+          description: "Playbook starred successfully",
+        });
+      }
+
+      console.log('Star response:', response);
+      
+      // Update the playbook data with new star count and starred status
+      const updatedPlaybook = await getDetailedPlaybook(playbook.id);
+      setPlaybook(updatedPlaybook);
+      
+    } catch (error) {
+      console.error('Error starring/unstarring playbook:', error);
+      toast({
+        title: "Error",
+        description: error instanceof Error ? error.message : 'Failed to star/unstar playbook',
+        variant: "destructive",
+      });
+    } finally {
+      setIsStarring(false);
+    }
   };
 
   const handleCreatePR = () => {
@@ -104,7 +182,11 @@ export default function PlaybookDetail() {
       return;
     }
     if (isGuest) {
-      alert("Please sign in to create pull requests");
+      toast({
+        title: "Authentication Required",
+        description: "Please sign in to create pull requests",
+        variant: "destructive",
+      });
       return;
     }
     setShowCreatePRModal(true);
@@ -232,9 +314,13 @@ export default function PlaybookDetail() {
             </div>
             
             <div className="flex flex-col sm:flex-row gap-3">
-              <Button variant="outline" onClick={handleStar}>
-                <Star className="w-4 h-4 mr-2" />
-                Star (0)
+              <Button 
+                variant={playbook.is_starred ? "default" : "outline"} 
+                onClick={handleStar}
+                disabled={isStarring}
+              >
+                <Star className={`w-4 h-4 mr-2 ${playbook.is_starred ? "fill-current" : ""}`} />
+                {isStarring ? "..." : `${playbook.is_starred ? "Starred" : "Star"} (${playbook.star_count})`}
               </Button>
               <Button 
                 variant="outline" 
@@ -256,14 +342,8 @@ export default function PlaybookDetail() {
                 <GitPullRequest className="w-4 h-4 mr-2" />
                 Create PR
               </Button>
-              <Button variant="outline">
-                <Download className="w-4 h-4 mr-2" />
-                Download
-              </Button>
-              <Button variant="outline">
-                <Share2 className="w-4 h-4 mr-2" />
-                Share
-              </Button>
+              
+              
             </div>
           </div>
         </div>
@@ -292,7 +372,7 @@ export default function PlaybookDetail() {
               <CardContent className="space-y-4">
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Stars</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{playbook.star_count}</span>
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Forks</span>
@@ -300,7 +380,7 @@ export default function PlaybookDetail() {
                 </div>
                 <div className="flex justify-between">
                   <span className="text-muted-foreground">Views</span>
-                  <span className="font-medium">0</span>
+                  <span className="font-medium">{playbook.view_count}</span>
                 </div>
                 <Separator />
                 <div className="flex justify-between">

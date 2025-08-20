@@ -26,7 +26,7 @@ import {
   Settings,
   Info
 } from "lucide-react";
-import { searchPlaybooks, SearchResult } from "@/lib/api";
+import { searchPlaybooks, SearchResult, getPopularPlaybooks, PopularPlaybook } from "@/lib/api";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -51,6 +51,9 @@ export default function SearchResults() {
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [searchInput, setSearchInput] = useState(query || tag);
+  const [trendingPlaybooks, setTrendingPlaybooks] = useState<PopularPlaybook[]>([]);
+  const [isLoadingTrending, setIsLoadingTrending] = useState(false);
+  const [showTrending, setShowTrending] = useState(false);
 
   useEffect(() => {
     const performSearch = async () => {
@@ -81,6 +84,25 @@ export default function SearchResults() {
     e.preventDefault();
     if (searchInput.trim()) {
       navigate(`/search?q=${encodeURIComponent(searchInput.trim())}`);
+    }
+  };
+
+  const handleTrendingClick = async () => {
+    if (showTrending && trendingPlaybooks.length > 0) {
+      setShowTrending(false);
+      return;
+    }
+
+    try {
+      setIsLoadingTrending(true);
+      const popularPlaybooks = await getPopularPlaybooks(5);
+      setTrendingPlaybooks(popularPlaybooks);
+      setShowTrending(true);
+    } catch (err) {
+      console.error('Error fetching trending playbooks:', err);
+      // Don't show error toast for trending, just log it
+    } finally {
+      setIsLoadingTrending(false);
     }
   };
 
@@ -152,34 +174,142 @@ export default function SearchResults() {
     <div className="min-h-screen bg-background">
       <Navigation />
       
-      {/* Google-style Search Header */}
-      <div className="border-b bg-white">
-        <div className="container mx-auto px-4 py-6">
-          {/* Centered Search Bar */}
-          <div className="max-w-2xl mx-auto">
-            <form onSubmit={handleSearch} className="relative">
-              <div className="relative">
-                <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
-                <Input
-                  placeholder="Search playbooks..."
-                  value={searchInput}
-                  onChange={(e) => setSearchInput(e.target.value)}
-                  className="pl-12 pr-20 h-12 text-lg rounded-full border-2 focus:border-primary shadow-sm"
-                />
-                <Button 
-                  type="submit" 
-                  disabled={!searchInput.trim()}
-                  className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full"
-                >
-                  Search
-                </Button>
-              </div>
-            </form>
-          </div>
-        </div>
-      </div>
+             {/* Google-style Search Header */}
+       <div className="border-b bg-white">
+         <div className="container mx-auto px-4 py-6">
+           {/* Centered Search Bar with Trending Button */}
+           <div className="max-w-4xl mx-auto">
+             <div className="flex items-center gap-4">
+               {/* Search Bar */}
+               <div className="flex-1 max-w-2xl">
+                 <form onSubmit={handleSearch} className="relative">
+                   <div className="relative">
+                     <Search className="absolute left-4 top-1/2 h-5 w-5 -translate-y-1/2 text-muted-foreground" />
+                     <Input
+                       placeholder="Search playbooks..."
+                       value={searchInput}
+                       onChange={(e) => setSearchInput(e.target.value)}
+                       className="pl-12 pr-20 h-12 text-lg rounded-full border-2 focus:border-primary shadow-sm"
+                     />
+                     <Button 
+                       type="submit" 
+                       disabled={!searchInput.trim()}
+                       className="absolute right-2 top-1/2 -translate-y-1/2 h-8 px-4 rounded-full"
+                     >
+                       Search
+                     </Button>
+                   </div>
+                 </form>
+               </div>
+               
+               {/* Trending Button */}
+               <Button 
+                 variant="outline" 
+                 onClick={handleTrendingClick}
+                 disabled={isLoadingTrending}
+                 className="flex items-center gap-2 h-12 px-6 rounded-full border-2"
+               >
+                 {isLoadingTrending ? (
+                   <Loader2 className="h-4 w-4 animate-spin" />
+                 ) : showTrending ? (
+                   <>
+                     <TrendingUp className="h-4 w-4" />
+                     Hide Trending
+                   </>
+                 ) : (
+                   <>
+                     <TrendingUp className="h-4 w-4" />
+                     Show Trending
+                   </>
+                 )}
+               </Button>
+             </div>
+           </div>
+         </div>
+       </div>
 
-      <div className="container mx-auto px-4 py-6">
+             <div className="container mx-auto px-4 py-6">
+         {/* Trending Section - Now positioned after search header */}
+         {showTrending && (
+           <div className="mb-8">
+             <div className="flex items-center justify-between mb-4">
+               <h2 className="text-2xl font-bold">Trending Playbooks</h2>
+               <Badge variant="secondary" className="flex items-center gap-1">
+                 <TrendingUp className="h-3 w-3" />
+                 Popular Now
+               </Badge>
+             </div>
+             
+             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+               {isLoadingTrending ? (
+                 // Loading skeleton cards
+                 Array.from({ length: 5 }).map((_, index) => (
+                   <Card key={index} className="animate-pulse">
+                     <CardHeader>
+                       <div className="flex items-start justify-between">
+                         <div className="flex-1">
+                           <div className="h-6 bg-muted rounded mb-2"></div>
+                           <div className="h-4 bg-muted rounded mb-1"></div>
+                           <div className="h-4 bg-muted rounded w-3/4"></div>
+                         </div>
+                         <div className="h-6 w-8 bg-muted rounded ml-2"></div>
+                       </div>
+                     </CardHeader>
+                     <CardContent>
+                       <div className="h-4 bg-muted rounded mb-3"></div>
+                       <div className="flex gap-4">
+                         <div className="h-4 w-12 bg-muted rounded"></div>
+                         <div className="h-4 w-12 bg-muted rounded"></div>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 ))
+               ) : (
+                 trendingPlaybooks.map((playbook, index) => (
+                   <Card key={playbook.playbook_id} className="hover:shadow-lg transition-shadow cursor-pointer" onClick={() => handleView(playbook.playbook_id)}>
+                     <CardHeader>
+                       <div className="flex items-start justify-between">
+                         <div className="flex-1">
+                           <CardTitle className="text-lg line-clamp-2 mb-2">{playbook.title}</CardTitle>
+                           <CardDescription className="line-clamp-3">{playbook.description}</CardDescription>
+                         </div>
+                         <Badge variant="secondary" className="flex items-center gap-1 ml-2">
+                           <TrendingUp className="h-3 w-3" />
+                           #{index + 1}
+                         </Badge>
+                       </div>
+                     </CardHeader>
+                     <CardContent>
+                       <div className="flex items-center justify-between text-sm text-muted-foreground mb-3">
+                         <span>Created {new Date(playbook.created_at).toLocaleDateString()}</span>
+                       </div>
+                       <div className="flex items-center gap-4 text-sm">
+                         <span className="flex items-center gap-1">
+                           <Star className="h-4 w-4" />
+                           {playbook.star_count}
+                         </span>
+                         <span className="flex items-center gap-1">
+                           <Eye className="h-4 w-4" />
+                           {playbook.view_count}
+                         </span>
+                       </div>
+                     </CardContent>
+                   </Card>
+                 ))
+               )}
+               {!isLoadingTrending && trendingPlaybooks.length === 0 && (
+                 <div className="col-span-full flex flex-col items-center justify-center py-8">
+                   <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
+                   <p className="text-muted-foreground">No trending playbooks available</p>
+                 </div>
+               )}
+             </div>
+           </div>
+         )}
+
+         {/* Only show separator if trending is shown */}
+         {showTrending && <Separator className="my-8" />}
+
         {/* Search Results Header */}
         <div className="flex items-center justify-between mb-6">
           <div className="flex items-center gap-4">
